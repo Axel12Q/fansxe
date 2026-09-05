@@ -14,14 +14,12 @@ jobs:
       uses: actions/checkout@v4
     
     - name: 📂 Subiendo por SFTP puro
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      uses: wangyucode/sftp-upload-action@v2.0.2
       with:
-        server: access-5021305806.webspace-host.com
+        host: access-5021305806.webspace-host.com
         username: su81402
         password: ${{ secrets.FTP_PASSWORD }}
-        protocol: sftp
         port: 22
-        server-dir: /
-        exclude: |
-          **/.git*
-          **/.git*/**
+        localDir: '.'
+        remoteDir: '/'
+        exclude: '.git/**,.github/**'
