@@ -9,6 +9,8 @@ jobs:
   deploy:
     name: 🎉 Deploy SFTP
     runs-on: ubuntu-latest
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
     - name: 🚚 Descargando el codigo
       uses: actions/checkout@v4
