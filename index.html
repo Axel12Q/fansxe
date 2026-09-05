@@ -3,39 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prototipo - VIP Violet</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              'vip-primary': '#8B5CF6',     /* Violeta premium */
-              'vip-hover': '#7C3AED',       
-              'vip-dark': '#0F172A',        /* Slate 900 */
-              'vip-gray': '#64748B',        /* Slate 500 */
-              'vip-bg': '#F8FAFC',          /* Slate 50 - Blanco roto muy limpio */
-              'vip-border': '#E2E8F0',      /* Slate 200 */
-            },
-            fontFamily: {
-              sans: ['Inter', 'system-ui', 'sans-serif'],
-            }
-          }
-        }
-      }
-    </script>
+    <title>Prueba de Deploy</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body { background-color: #F8FAFC; color: #0F172A; }
-        .glass-header { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px); }
-        /* Scrollbar sutil */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #CBD5E1; }
+        body {
+            background-color: #1e1e1e;
+            color: #00ffcc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            padding-top: 100px;
+        }
+        .caja {
+            border: 2px solid #00ffcc;
+            padding: 40px;
+            border-radius: 15px;
+            display: inline-block;
+            background-color: #2d2d2d;
+        }
     </style>
 </head>
-<body class="antialiased min-h-screen pb-16 md:pb-8 pt-0 md:pt-8">
-<h1 class="text-4xl font-bold text-vip-primary text-center mt-8">Bienvenido a VIP Violet</h1>
+<body>
+    <div class="caja">
+        <h1>¡El Deploy Automático Funciona! 🚀</h1>
+        <p>Si estás viendo esto, GitHub Actions subió el archivo al FTP correctamente.</p>
+        <p><i>Proyecto de Ingeniería Mecatrónica - UG DICIS</i></p>
+    </div>
 </body>
 </html>
