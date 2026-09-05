@@ -1,0 +1,23 @@
+name: Subir por SFTP automaticamente
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: 🎉 Deploy SFTP
+    runs-on: ubuntu-latest
+    steps:
+    - name: 🚚 Descargando el codigo mas reciente
+      uses: actions/checkout@v4
+    
+    - name: 📂 Subiendo archivos al servidor
+      uses: wlixcc/SFTP-Deploy-Action@v1.2
+      with:
+        server: 'access-5021305806.webspace-host.com'
+        username: 'su81402'
+        port: 22
+        password: ${{ secrets.FTP_PASSWORD }}
+        remote_path: '/public/' # OJO: Cambia esto por la ruta de tu servidor (ej. /public_html/ o /)
