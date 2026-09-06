@@ -203,6 +203,6 @@ test('text, photo and video stories persist for 24 hours and unlock the first-st
     next.click('[data-feature="view-stories"][data-user="demo"]'); next.click('[data-feature="next-story"]');
     await next.w.FansxeMedia.hydrate(next.d.querySelector('#story-view'));
     assert.ok(next.d.querySelector('#story-view img[data-asset]').src.startsWith('blob:'));
-    next.click('[data-feature="next-story"]'); assert.ok(next.d.querySelector('#story-view .video-player'));
+    next.click('[data-feature="next-story"]'); assert.ok(next.d.querySelector('#story-view video'));
     assert.deepEqual(c.errors, []); assert.deepEqual(next.errors, []);
 });

@@ -1,6 +1,6 @@
 # Fansxe en IONOS
 
-El dominio `https://fansxe.com` usa PHP 8.4 y MariaDB. Los HTML conservan el diseño; Apache sirve las páginas de cuenta mediante `server/page.php`. Este reemplaza los adaptadores locales por `server-auth.js` y `server-store.js`. Abrir los mismos HTML con el servidor estático de Python sigue mostrando la demo local.
+El dominio `https://fansxe.com` usa PHP 8.4 y MariaDB. Los HTML conservan el diseño; Apache sirve las páginas de cuenta mediante `server/page.php`. Este reemplaza los adaptadores locales por `server-auth.js` y `server-store.js`. Abrir los mismos HTML con el servidor estático de Python sigue mostrando la demo local. Las nuevas pantallas comerciales necesitan PHP.
 
 ## Funciones conectadas
 
@@ -8,7 +8,27 @@ Registro con declaración de mayoría de edad, sesiones PHP, contraseñas Argon2
 
 El feed consulta bloques de seis registros desde la base, incluidos búsqueda y filtros. Los chats consultan actividad cada diez segundos mientras la pestaña está visible. La primera versión aún recupera el directorio de usuarios y el historial de conversaciones completo: deberán paginarse antes de escalar a una comunidad grande. Los comentarios mostrados por publicación están limitados a 200 y las notificaciones a 100.
 
-Google no está habilitado: requiere un cliente OAuth y sus credenciales. Las recargas, propinas y suscripciones de pago rechazan operaciones hasta integrar una pasarela y sus webhooks verificados. Las tablas de suscripciones y contabilidad están preparadas, sin créditos ficticios. No existe un acceso `admin/admin` en producción.
+Google no está habilitado: la integración Firebase se realizará por separado. No existe un acceso `admin/admin` en producción. Registro solicita un username único de 3–20 caracteres ASCII (letras, números, guion bajo), además del nombre. Se admite login por correo, username o @username; las contraseñas requieren al menos 8 caracteres.
+
+Los visitantes pueden explorar Inicio, perfiles ajenos y archivos de publicaciones públicas; las acciones de escritura y las páginas privadas exigen sesión. La sesión se recuerda durante 30 días con cookies Secure/HttpOnly/SameSite y tokens aleatorios guardados como hash en MariaDB. Puede restaurarse aunque PHP haya limpiado su sesión temporal. Logout revoca el token del dispositivo; cambiar o recuperar la contraseña revoca los anteriores.
+
+## Gemas y creadores: simulación comercial
+
+`gemas.html` ofrece recargas simuladas (100, 550 y 1,200 gemas), con confirmación y precios de referencia en USD. No solicita tarjeta ni ejecuta cobros. Las gemas no tienen valor monetario y no se pueden canjear por dinero. Los endpoints antiguos de recarga en centavos permanecen deshabilitados; la nueva contabilidad se separa en `gem_ledger`.
+
+`creador.html` permite solicitar la aprobación como creador después de verificar la edad. Son dos decisiones distintas. Por defecto nadie vende contenido. Un administrador revisa las solicitudes en `admin.html`; solo un creador aprobado puede configurar el precio mensual, publicar contenido privado y recibir suscripciones o apoyos. Los perfiles que no venden no muestran el botón de suscripción.
+
+Las suscripciones simuladas descuentan gemas y habilitan el contenido durante 30 días. Cada venta registra precio bruto, comisión y neto, bajo transacción. La comisión provisional es 5%, configurable mediante `commission_percent`; se redondea hacia arriba a una gema. Los checkouts tienen claves de idempotencia para evitar cobros duplicados. El espacio del creador muestra ventas y saldo disponible, permite solicitar retiros de prueba desde 100 gemas y reserva ese importe. Administración puede rechazar o marcar la simulación completada; ninguna acción transfiere dinero. No se solicitan cuentas bancarias.
+
+Plus cuesta 200 gemas de prueba por 30 días y añade una insignia al perfil. No incluye suscripciones a creadores. Migración `002_social_commerce.sql` incorpora estas tablas y columnas sin renombrar ni borrar las cuentas existentes.
+
+## Historias y experiencia móvil
+
+Las fotos y pensamientos avanzan a los seis segundos (las fotos esperan a terminar de cargar). Los videos se reproducen al abrirse y avanzan al finalizar; si el navegador bloquea el sonido automático, se intenta reproducir silenciado y se ofrece activar sonido. Mantener pulsado pausa y oculta la interfaz; soltar reanuda. El visor contiene el video dentro de la altura visible, sin la barra de parámetros del reproductor de publicaciones.
+
+El autor puede eliminar la historia con confirmación y consultar espectadores y likes. La lista de espectadores solo se devuelve al autor. Las propias visualizaciones y reacciones no aumentan sus estadísticas. La eliminación o caducidad bloquea el archivo aunque se conserve su URL. Las fechas recientes se presentan de forma relativa y se actualizan cada minuto.
+
+Las reacciones y comentarios actualizan solo su tarjeta para evitar saltos de desplazamiento. Las imágenes reservan su espacio y se revelan al terminar la carga. Explorar personas añade tandas de doce perfiles con desplazamiento o botón alternativo.
 
 ## Credenciales
 

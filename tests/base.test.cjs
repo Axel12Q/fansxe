@@ -111,7 +111,7 @@ test('all pages load the same assets in dependency order', () => {
     for (const file of ['inicio.html', 'perfil.html', 'mensajes.html', 'notificaciones.html', 'configuracion.html', 'admin.html']) {
         const html = fs.readFileSync(path.join(root, file), 'utf8');
         const localScripts = [...html.matchAll(/<script src="(assets\/[^\"]+)"/g)].map(match => match[1]);
-        assert.deepEqual(localScripts, ['theme', 'auth', 'data', 'store', 'community-store', 'media', 'layout', 'components', 'dialogs', 'attachments', 'chat', 'app', 'features'].map(name => `assets/js/${name}.js`));
+        assert.deepEqual(localScripts, ['theme', 'auth', 'data', 'store', 'community-store', 'media', 'layout', 'components', 'dialogs', 'attachments', 'chat', 'app', 'story-player', 'features'].map(name => `assets/js/${name}.js`));
         for (const asset of localScripts) assert.ok(fs.existsSync(path.join(root, asset)));
         assert.ok(html.includes('assets/css/styles.css'));
         for (const id of ['sidebar-slot', 'mobile-slot', 'modals-slot', 'toast']) assert.ok(html.includes(`id="${id}"`));

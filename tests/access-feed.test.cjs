@@ -43,11 +43,12 @@ test('admin login, account registration, duplicate checks and hashed local crede
     assert.equal(auth.session().email, 'admin');
     assert.equal(await auth.register('Ana', 'ana@ejemplo.test', 'Contrasena123', 'Contrasena123'), 'age-required');
     assert.equal(c.w.localStorage.getItem('fansxe.accounts.v1'), null);
-    assert.equal(await auth.register('Ana', 'ana@ejemplo.test', 'Contrasena123', 'Contrasena123', true), 'success');
+    assert.equal(await auth.register('Ana', 'ana@ejemplo.test', 'Contrasena123', 'Contrasena123', true, 'ana'), 'success');
     assert.ok(JSON.parse(c.w.localStorage.getItem('fansxe.accounts.v1'))[0].adultDeclaredAt > 0);
-    assert.equal(await auth.register('Ana', 'ana@ejemplo.test', 'Contrasena123', 'Contrasena123', true), 'duplicate');
+    assert.equal(await auth.register('Ana', 'ana@ejemplo.test', 'Contrasena123', 'Contrasena123', true, 'ana'), 'duplicate');
     assert.equal(await auth.login('ana@ejemplo.test', 'incorrecta'), false);
     assert.equal(await auth.login('ana@ejemplo.test', 'Contrasena123'), true);
+    assert.equal(await auth.login('@ana', 'Contrasena123'), true);
     assert.ok(!c.w.localStorage.getItem('fansxe.accounts.v1').includes('Contrasena123'));
     assert.equal(await auth.changePassword('incorrecta', 'OtraContrasena456', 'OtraContrasena456'), 'incorrect');
     assert.equal(await auth.changePassword('Contrasena123', 'OtraContrasena456', 'OtraContrasena456'), 'success');
@@ -55,6 +56,16 @@ test('admin login, account registration, duplicate checks and hashed local crede
     assert.equal(await auth.login('ana@ejemplo.test', 'OtraContrasena456'), true);
     c.w.sessionStorage.setItem('fansxe.session.v1', JSON.stringify({ email: 'admin', expiresAt: 1 })); assert.equal(auth.session(), null);
     const next = load(t, 'login.html', { query: '?next=https://example.com' }); assert.equal(next.w.FansxeAuth.destination(), 'inicio.html');
+});
+
+test('registration requires a unique username, accepts eight characters and removes the admin placeholder', async t => {
+    const c=load(t,'registro.html'),auth=c.w.FansxeAuth;
+    assert.ok(c.d.querySelector('#auth-username').required);
+    assert.equal(c.d.querySelector('#auth-password').minLength,8);
+    assert.equal(await auth.register('Luis','luis@example.test','Siete12','Siete12',true,'luis'),'invalid');
+    assert.equal(await auth.register('Luis','luis@example.test','Ocho123!','Ocho123!',true,'luis'),'success');
+    assert.equal(await auth.register('Otro','otro@example.test','Ocho123!','Ocho123!',true,'Luis'),'duplicate');
+    assert.equal(load(t,'login.html').d.querySelector('#auth-email').placeholder,'Correo o @usuario');
 });
 
 test('settings password replaces the default admin login password', async t => {

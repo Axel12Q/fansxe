@@ -102,6 +102,12 @@
     }
     async function hydrate(scope = document) {
         scope.querySelectorAll('.video-player').forEach(player);
+        scope.querySelectorAll('.post-media img, .gallery-image img, .story-full-photo').forEach(el => {
+            if (el.dataset.fade) return; el.dataset.fade = 'true'; el.classList.add('media-pending');
+            const reveal = async () => { try { await el.decode?.(); } catch {} el.classList.remove('media-pending'); el.classList.add('media-ready'); };
+            el.addEventListener('load', reveal, { once: true }); el.addEventListener('error', () => el.classList.remove('media-pending'), { once: true });
+            if (el.complete && el.naturalWidth) reveal();
+        });
         await Promise.all([...scope.querySelectorAll('[data-asset]')].map(el => {
             if (!loading.has(el)) loading.set(el, (async () => {
                 try { const source = await url(el.dataset.asset); if (el.isConnected) el.src = source; }

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 function auth_action(string $action,array $d): never {
  $ip=$_SERVER['REMOTE_ADDR']??'cli'; limited('auth:'.$ip,40);
- $email=strtolower(str_value($d,'email',254));
+ $email=strtolower(ltrim(str_value($d,'email',254),'@'));
  if($action==='login') {
   limited('login:'.$email,12);
   $u=row('SELECT * FROM users WHERE email=? OR handle=?',[$email,$email]);
@@ -14,9 +14,12 @@ function auth_action(string $action,array $d): never {
   limited('register:'.$ip,6,3600);
   if(($d['adult']??false)!==true) fail('Confirma que tienes 18 años o más.');
   $name=str_value($d,'name',60,true);$password=$d['password']??'';
-  if(!filter_var($email,FILTER_VALIDATE_EMAIL)||!is_string($password)||strlen($password)<10||strlen($password)>128||$password!==($d['confirm']??'')) fail('Revisa el correo y las contraseñas (10 a 128 caracteres).');
+  if(!filter_var($email,FILTER_VALIDATE_EMAIL)||!is_string($password)||strlen($password)<8||strlen($password)>128||$password!==($d['confirm']??'')) fail('Revisa el correo y las contraseñas (8 a 128 caracteres).');
   if(row('SELECT id FROM users WHERE email=?',[$email])) fail('Ese correo no está disponible.');
-  $id=uid();$handle='user_'.substr($id,0,12);
+  $handle=strtolower(ltrim(str_value($d,'username',20,true),'@'));
+  if(!preg_match('/^[a-z0-9_]{3,20}$/D',$handle))fail('El username debe tener de 3 a 20 letras, números o guiones bajos.');
+  if(row('SELECT id FROM users WHERE handle=?',[$handle]))fail('Ese username ya está en uso.');
+  $id=uid();
   query('INSERT INTO users(id,email,handle,name,password_hash,adult_declared_at) VALUES(?,?,?,?,?,NOW())',[$id,$email,$handle,$name,password_hash($password,PASSWORD_ARGON2ID)]);
   login_user(row('SELECT * FROM users WHERE id=?',[$id])); output(['ok'=>true]);
  }
@@ -35,11 +38,12 @@ function auth_action(string $action,array $d): never {
  }
  if($action==='reset') {
   $password=$d['password']??'';
-  if(!is_string($password)||strlen($password)<10||strlen($password)>128||$password!==($d['confirm']??'')) fail('Las contraseñas deben coincidir y tener 10 a 128 caracteres.');
+  if(!is_string($password)||strlen($password)<8||strlen($password)>128||$password!==($d['confirm']??'')) fail('Las contraseñas deben coincidir y tener 8 a 128 caracteres.');
   db()->beginTransaction();
   $r=row('SELECT * FROM password_resets WHERE token_hash=? AND expires_at>NOW() FOR UPDATE',[hash('sha256',(string)($d['token']??''))]);
   if(!$r) { db()->rollBack(); fail('El enlace ya no es válido. Solicita otro.'); }
   query('UPDATE users SET password_hash=?,session_version=session_version+1 WHERE id=?',[password_hash($password,PASSWORD_ARGON2ID),$r['user_id']]);
+  query('DELETE FROM remembered_sessions WHERE user_id=?',[$r['user_id']]);
   query('DELETE FROM password_resets WHERE user_id=?',[$r['user_id']]); db()->commit(); output(['ok'=>true,'message'=>'Contraseña actualizada. Ya puedes iniciar sesión.']);
  }
  fail('Operación desconocida.',404);

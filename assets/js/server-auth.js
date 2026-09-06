@@ -9,10 +9,10 @@
         });
         const result = await response.json();
         if (!response.ok) throw Error(result.error || 'No se pudo completar la operación.');
-        if (result.csrf) csrf = result.csrf;
+        if (result.csrf || result.snapshot?.csrf) csrf = result.csrf || result.snapshot.csrf;
         return result;
     };
-    const destination = () => { const next = new URLSearchParams(location.search).get('next'); return next && /^(inicio|perfil|mensajes|notificaciones|configuracion|admin)\.html(?:\?[^#]*)?$/.test(next) ? next : 'inicio.html'; };
+    const destination = () => { const next = new URLSearchParams(location.search).get('next'); return next && /^(inicio|perfil|mensajes|notificaciones|configuracion|admin|gemas|creador)\.html(?:\?[^#]*)?$/.test(next) ? next : 'inicio.html'; };
     window.FansxeAuth = {
         session: () => FansxeBoot.session, destination,
         async logout() { try { await FansxeAPI('logout', {}); location.href = 'login.html'; } catch (e) { window.FansxeApp?.notify(e.message); } }
@@ -24,7 +24,7 @@
         const token = new URLSearchParams(location.search).get('token');
         if (form.dataset.mode === 'recovery' && token) {
             form.dataset.mode = 'reset';
-            form.innerHTML = '<label class="form-label" for="auth-password">Nueva contraseña</label><input id="auth-password" name="password" class="text-field" type="password" minlength="10" maxlength="128" autocomplete="new-password" required><label class="form-label" for="auth-confirm">Repetir contraseña</label><input id="auth-confirm" name="confirm" class="text-field" type="password" minlength="10" maxlength="128" autocomplete="new-password" required><button class="public-primary auth-submit" type="submit">Guardar contraseña</button>';
+            form.innerHTML = '<label class="form-label" for="auth-password">Nueva contraseña</label><input id="auth-password" name="password" class="text-field" type="password" minlength="8" maxlength="128" autocomplete="new-password" required><label class="form-label" for="auth-confirm">Repetir contraseña</label><input id="auth-confirm" name="confirm" class="text-field" type="password" minlength="8" maxlength="128" autocomplete="new-password" required><button class="public-primary auth-submit" type="submit">Guardar contraseña</button>';
         }
         document.querySelector('[data-google]')?.addEventListener('click', () => { status.textContent = 'El acceso con Google todavía no está habilitado.'; });
         document.querySelector('[data-password-toggle]')?.addEventListener('click', e => { const field = form.elements.password; field.type = field.type === 'password' ? 'text' : 'password'; e.currentTarget.textContent = field.type === 'password' ? 'Mostrar' : 'Ocultar'; });

@@ -5,4 +5,5 @@ return [
  'db_user' => 'YOUR_DATABASE_USER', 'db_password' => 'SET_PRIVATELY',
  'origin' => 'https://fansxe.com', 'mail_from' => 'soporte@fansxe.com', 'mail_enabled' => false,
  'storage' => '/home/www/fansxe-private/media', 'secure_cookies' => true,
+ 'commission_percent' => 5,
 ];

@@ -56,13 +56,14 @@
         return hex(await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: Uint8Array.from(salt.match(/../g).map(n => parseInt(n, 16))), iterations: 210000, hash: 'SHA-256' }, imported, 256));
     }
     window.FansxeCommunity = {
+        deleteStory(id) { if (!state.stories.some(s => s.id === id && s.creatorId === 'demo')) return false; return commit(() => { state.stories = state.stories.filter(s => s.id !== id); delete state.storyLikes[id]; delete state.storySeen[id]; }); },
         get state() { return state; }, latest, canPublishPrivate, badgeCatalog, earned,
         shownBadges(id) { return earned(id).filter(b => id !== 'demo' || !state.hiddenBadges.includes(b.id)); },
         setBadge(id, shown) { if (!earned('demo').some(b => b.id === id)) return false; return commit(() => { state.hiddenBadges = shown ? state.hiddenBadges.filter(b => b !== id) : [...new Set([...state.hiddenBadges, id])]; }); },
         setTheme(theme) { if (!['light', 'dark'].includes(theme)) return false; return commit(() => { state.theme = theme; }); },
         setEmail(email) { email = email.trim(); if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return false; return commit(() => { state.email = email; }); },
         async changePassword(current, password, confirm) {
-            if (password.length < 10 || password.length > 128 || password !== confirm) return 'invalid';
+            if (password.length < 8 || password.length > 128 || password !== confirm) return 'invalid';
             const session = window.FansxeAuth?.session();
             if (session && session.email !== 'admin') return FansxeAuth.changePassword(current, password, confirm);
             const previous = state.password;

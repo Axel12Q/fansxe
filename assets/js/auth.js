@@ -21,21 +21,21 @@
                 if (valid) start('admin', 'Administrador');
                 return valid;
             }
-            const account = accountList().find(a => a.email === email);
+            const account = accountList().find(a => a.email === email || a.username === email.replace(/^@/, ''));
             if (!account || await hash(password, account.salt) !== account.hash) return false;
-            start(email, account.name); return true;
+            start(account.email, account.name); return true;
         },
-        async register(name, email, password, confirm, adultConfirmed = false) {
+        async register(name, email, password, confirm, adultConfirmed = false, username = '') {
             if (adultConfirmed !== true) return 'age-required';
-            email = email.trim().toLowerCase(); name = name.trim();
-            if (!name || name.length > 60 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 || password.length < 10 || password.length > 128 || password !== confirm) return 'invalid';
-            if (accountList().some(a => a.email === email)) return 'duplicate';
+            email = email.trim().toLowerCase(); name = name.trim(); username = username.trim().replace(/^@/, '').toLowerCase(); if (!/^[a-z0-9_]{3,20}$/.test(username)) return 'invalid';
+            if (!name || name.length > 60 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 || password.length < 8 || password.length > 128 || password !== confirm) return 'invalid';
+            if (accountList().some(a => a.email === email || a.username === username)) return 'duplicate';
             const salt = hex(crypto.getRandomValues(new Uint8Array(16))), digest = await hash(password, salt);
             const list = accountList(); if (list.some(a => a.email === email)) return 'duplicate';
-            list.push({ name, email, salt, hash: digest, adultDeclaredAt: Date.now() }); localStorage.setItem(key, JSON.stringify(list)); start(email, name); return 'success';
+            list.push({ name, email, username, salt, hash: digest, adultDeclaredAt: Date.now() }); localStorage.setItem(key, JSON.stringify(list)); start(email, name); return 'success';
         },
         async changePassword(current, password, confirm) {
-            if (password.length < 10 || password.length > 128 || password !== confirm) return 'invalid';
+            if (password.length < 8 || password.length > 128 || password !== confirm) return 'invalid';
             const email = session()?.email, previous = accountList().find(a => a.email === email);
             if (!previous || await hash(current, previous.salt) !== previous.hash) return 'incorrect';
             const salt = hex(crypto.getRandomValues(new Uint8Array(16))), digest = await hash(password, salt);
@@ -61,9 +61,9 @@
                 const mode = form.dataset.mode;
                 if (mode === 'recovery') { status.textContent = 'Solicitud de prueba preparada. No se ha enviado ningún correo: la recuperación se conectará al servidor de correo con el backend.'; return; }
                 if (mode === 'register') {
-                    const result = await FansxeAuth.register(form.elements.name.value, form.elements.email.value, form.elements.password.value, form.elements.confirm.value, form.elements.adult.checked);
+                    const result = await FansxeAuth.register(form.elements.name.value, form.elements.email.value, form.elements.password.value, form.elements.confirm.value, form.elements.adult.checked, form.elements.username.value);
                     if (result === 'age-required') { status.textContent = 'Debes confirmar que tienes 18 años o más para crear tu cuenta.'; return; }
-                    if (result !== 'success') { status.textContent = result === 'duplicate' ? 'Ese correo ya tiene una cuenta local.' : 'Revisa tus datos. Las contraseñas deben coincidir y tener al menos 10 caracteres.'; return; }
+                    if (result !== 'success') { status.textContent = result === 'duplicate' ? 'Ese correo ya tiene una cuenta local.' : 'Revisa tus datos. Las contraseñas deben coincidir y tener al menos 8 caracteres.'; return; }
                 } else if (!await FansxeAuth.login(form.elements.email.value, form.elements.password.value)) { status.textContent = 'Usuario o contraseña incorrectos.'; return; }
                 location.href = destination();
             } catch { status.textContent = 'No se pudo guardar la sesión. Comprueba el almacenamiento y usa localhost o HTTPS.'; }

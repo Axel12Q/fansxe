@@ -4,6 +4,7 @@
     const $ = id => document.getElementById(id), page = document.body.dataset.page;
     const e = ui.escape;
     const statusNames = { pending: 'En revisión', approved: 'Aprobada', changes: 'Nueva fotografía solicitada', rejected: 'Rechazada', none: 'Sin verificar' };
+    let storyPlayer, deletingStory = null;
     let busy = false, activeRequest = null, adminFilter = 'pending', currentStory = null, shelfKey = '';
     const date = value => new Date(value).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
     function dialog(id, title, body, wide = false) {
@@ -12,6 +13,7 @@
     $('modals-slot').insertAdjacentHTML('beforeend', dialog('badgesModal', 'Tus insignias', '<p class="field-help">Elige cuáles mostrar en tu perfil. Los logros se obtienen automáticamente.</p><div id="badge-options"></div>')
         + dialog('storyComposeModal', 'Crear historia', `<form id="story-form"><label class="form-label" for="story-text">Un pensamiento, una foto o un video</label><textarea id="story-text" name="text" class="text-field" rows="4" maxlength="1000" placeholder="¿Qué está pasando por tu mente?"></textarea><label class="attachment-button mt-3" for="story-file">${ui.icon('photo')} Añadir foto o video</label><input id="story-file" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"><p class="field-help">Un archivo · Foto de hasta 8 MB o video de hasta 25 MB</p><div id="story-preview" class="attachment-preview"></div><label class="form-label" for="story-visibility">Audiencia</label><select id="story-visibility" class="text-field" name="visibility"><option value="public">Abierta a tus seguidores</option><option value="subscribers">Exclusiva para suscriptores que te siguen</option></select><p id="story-age-hint" class="field-help"></p><p class="field-help">Desaparece de las historias después de 24 horas.</p><div class="form-footer"><button class="button-primary" type="submit">Publicar historia</button></div></form>`)
         + dialog('storyViewerModal', 'Historia', '<div id="story-view"></div>', true)
+        + dialog('storyViewsModal', 'Personas que vieron tu historia', '<div id="story-viewers"></div>') + dialog('deleteStoryModal', 'Eliminar historia', '<p>La historia dejará de estar disponible para todos.</p><div class="form-footer"><button class="button-secondary" data-action="close-modal">Cancelar</button><button class="button-primary" data-feature="confirm-delete-story">Eliminar historia</button></div>')
         + dialog('ageReviewModal', 'Revisar solicitud', '<div id="age-review"></div>', true));
     const storyPicker = FansxeAttachments.create($('story-file'), $('story-preview'), app.notify, false, 1);
     let agePicker;
@@ -26,7 +28,7 @@
         const approved = community.canPublishPrivate();
         let hint = $('post-age-hint');
         if (!hint) { hint = document.createElement('p'); hint.id = 'post-age-hint'; hint.className = 'field-help'; $('post-visibility').after(hint); }
-        hint.innerHTML = approved ? 'Edad aprobada en esta demo. Puedes publicar contenido exclusivo.' : 'Para publicar contenido privado, completa la <a class="text-link" href="configuracion.html#edad">verificación de edad</a>.';
+        hint.innerHTML = window.FansxeBoot ? (approved ? 'Puedes publicar contenido exclusivo.' : 'Verifica tu edad y solicita tu <a class="text-link" href="creador.html">aprobación como creador</a> para vender contenido.') : approved ? 'Edad aprobada en esta demo. Puedes publicar contenido exclusivo.' : 'Para publicar contenido privado, completa la <a class="text-link" href="configuracion.html#edad">verificación de edad</a>.';
         $('post-visibility').querySelector('[value="subscribers"]').disabled = !approved;
         $('story-visibility').querySelector('[value="subscribers"]').disabled = !approved;
         if (!approved) { if ($('post-visibility').value === 'subscribers') $('post-visibility').value = 'public'; if ($('story-visibility').value === 'subscribers') $('story-visibility').value = 'public'; }
@@ -35,7 +37,7 @@
     const badge = b => `<span class="achievement-icon achievement-${b.tone}">${ui.icon(b.icon)}</span>`;
     function renderBadges() {
         if (!$('profile-badges')) return;
-        const id = new URLSearchParams(location.search).get('user') || 'demo';
+        const selected = new URLSearchParams(location.search).get('user'); const id = selected === window.FansxeBoot?.selfId ? 'demo' : selected || 'demo';
         const list = community.shownBadges(id);
         $('profile-badges').innerHTML = `<div class="achievement-heading"><h3>Insignias</h3>${id === 'demo' ? '<button class="text-link" data-feature="badges">Gestionar</button>' : ''}</div><div class="achievement-list">${list.length ? list.map(b => `<span class="achievement" title="${e(b.description)}">${badge(b)}<span>${e(b.name)}</span></span>`).join('') : '<p class="field-help">Todavía no hay insignias visibles.</p>'}</div>`;
     }
@@ -47,7 +49,7 @@
         }).join('');
     }
     function settings() {
-        $('page-content').innerHTML = `<div class="settings-page"><nav class="settings-nav"><a href="#cuenta">Cuenta</a><a href="#apariencia">Apariencia</a><a href="#seguridad">Contraseña</a><a href="#edad">Verificación de edad</a></nav><section id="cuenta" class="settings-card"><h2>Tu cuenta</h2><div id="settings-person" class="person-row"></div><form id="email-form"><label class="form-label" for="account-email">Correo electrónico</label><input id="account-email" type="email" name="email" class="text-field" maxlength="254" required value="${e(community.state.email)}"><p class="field-help">Correo de demostración. Aún no se envían correos de confirmación.</p><button class="button-primary" type="submit">Guardar correo</button></form></section><section id="apariencia" class="settings-card"><h2>Apariencia</h2><label class="settings-toggle"><span><strong>Modo oscuro</strong><small>Se aplica a todas las páginas en este navegador.</small></span><input id="dark-mode" type="checkbox" role="switch" ${community.state.theme === 'dark' ? 'checked' : ''}></label></section><section id="seguridad" class="settings-card"><h2>Contraseña</h2><p class="field-help">Clave de prueba local. Se usa para entrar a la demo en este navegador. No protege el panel de administración abierto.</p><form id="password-form"><div id="current-password-row" ${community.state.password ? '' : 'hidden'}><label class="form-label" for="current-password">Contraseña actual</label><input id="current-password" name="current" class="text-field" type="password" autocomplete="current-password" maxlength="128" ${community.state.password ? 'required' : ''}></div><label class="form-label" for="new-password">Nueva contraseña</label><input id="new-password" class="text-field" name="password" type="password" autocomplete="new-password" minlength="10" maxlength="128" required><label class="form-label" for="confirm-password">Confirmar contraseña</label><input id="confirm-password" class="text-field" name="confirm" type="password" autocomplete="new-password" minlength="10" maxlength="128" required><p class="field-help">De 10 a 128 caracteres. No uses una contraseña real en esta demo.</p><button class="button-primary" type="submit">Guardar contraseña de prueba</button></form></section><section id="edad" class="settings-card"><h2>Verificación de edad</h2><p class="field-help">La aprobación de mayoría de edad (18+) es necesaria para crear publicaciones e historias privadas.</p><p class="demo-banner">Prueba local: usa una identificación ficticia. El panel de revisión está abierto y los archivos permanecen en este navegador.</p><div id="age-status"></div><form id="age-form"><label class="attachment-button" for="age-file">${ui.icon('photo')} Fotografía de identificación</label><input id="age-file" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/gif"><p class="field-help">JPG, PNG, WebP o GIF · Hasta 8 MB</p><div id="age-preview" class="attachment-preview"></div><label class="settings-toggle"><span>Confirmo que esta solicitud corresponde a una persona mayor de 18 años.</span><input id="adult-declaration" type="checkbox" required></label><button class="button-primary" type="submit">Enviar a revisión</button></form><div id="age-history"></div><a class="text-link inline-block mt-4" href="admin.html">Abrir panel de revisión · Demo sin contraseña</a></section></div>`;
+        $('page-content').innerHTML = `<div class="settings-page"><nav class="settings-nav"><a href="#cuenta">Cuenta</a><a href="#apariencia">Apariencia</a><a href="#seguridad">Contraseña</a><a href="#edad">Verificación de edad</a></nav><section id="cuenta" class="settings-card"><h2>Tu cuenta</h2><div id="settings-person" class="person-row"></div><form id="email-form"><label class="form-label" for="account-email">Correo electrónico</label><input id="account-email" type="email" name="email" class="text-field" maxlength="254" required value="${e(community.state.email)}"><p class="field-help">Correo de demostración. Aún no se envían correos de confirmación.</p><button class="button-primary" type="submit">Guardar correo</button></form></section><section id="apariencia" class="settings-card"><h2>Apariencia</h2><label class="settings-toggle"><span><strong>Modo oscuro</strong><small>Se aplica a todas las páginas en este navegador.</small></span><input id="dark-mode" type="checkbox" role="switch" ${community.state.theme === 'dark' ? 'checked' : ''}></label></section><section id="seguridad" class="settings-card"><h2>Contraseña</h2><p class="field-help">Clave de prueba local. Se usa para entrar a la demo en este navegador. No protege el panel de administración abierto.</p><form id="password-form"><div id="current-password-row" ${community.state.password ? '' : 'hidden'}><label class="form-label" for="current-password">Contraseña actual</label><input id="current-password" name="current" class="text-field" type="password" autocomplete="current-password" maxlength="128" ${community.state.password ? 'required' : ''}></div><label class="form-label" for="new-password">Nueva contraseña</label><input id="new-password" class="text-field" name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required><label class="form-label" for="confirm-password">Confirmar contraseña</label><input id="confirm-password" class="text-field" name="confirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" required><p class="field-help">De 8 a 128 caracteres. No uses una contraseña real en esta demo.</p><button class="button-primary" type="submit">Guardar contraseña de prueba</button></form></section><section id="edad" class="settings-card"><h2>Verificación de edad</h2><p class="field-help">La aprobación de mayoría de edad (18+) es necesaria para crear publicaciones e historias privadas.</p><p class="demo-banner">Prueba local: usa una identificación ficticia. El panel de revisión está abierto y los archivos permanecen en este navegador.</p><div id="age-status"></div><form id="age-form"><label class="attachment-button" for="age-file">${ui.icon('photo')} Fotografía de identificación</label><input id="age-file" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/gif"><p class="field-help">JPG, PNG, WebP o GIF · Hasta 8 MB</p><div id="age-preview" class="attachment-preview"></div><label class="settings-toggle"><span>Confirmo que esta solicitud corresponde a una persona mayor de 18 años.</span><input id="adult-declaration" type="checkbox" required></label><button class="button-primary" type="submit">Enviar a revisión</button></form><div id="age-history"></div><a class="text-link inline-block mt-4" href="admin.html">Abrir panel de revisión · Demo sin contraseña</a></section></div>`;
         agePicker = FansxeAttachments.create($('age-file'), $('age-preview'), app.notify, true, 1);
         updateSettings();
     }
@@ -90,9 +92,11 @@
     }
     function storyMarkup(s, user, viewable, own) {
         const list = community.stories(), index = list.findIndex(item => item.id === s.id);
-        return `<div class="story-stage"><header class="story-overlay-header"><div class="story-segments">${list.map((item, i) => `<span class="${i <= index ? 'passed' : ''}"></span>`).join('')}</div><div class="story-meta"><a class="author-link" href="${ui.profileUrl(user.id)}">${ui.avatar(user)}<span><strong>${e(user.name)}</strong><small id="story-time"></small></span></a><button class="story-close" data-action="close-modal" aria-label="Cerrar historia">${ui.icon('close')}</button></div></header>${viewable ? `<div class="story-content ${s.media.length ? '' : 'thought-story'}">${s.media.length ? (s.media[0].kind === 'image' ? `<img class="story-full-photo" data-asset="${e(s.media[0].id)}" alt="${e(s.media[0].name)}">` : ui.video(`data-asset="${e(s.media[0].id)}"`)) : ''}${s.text ? `<p class="story-caption">${ui.richText(s.text)}</p>` : ''}</div><footer class="story-overlay-footer">${own ? '<p class="field-help">Tu historia · Visible durante 24 horas</p>' : `<form id="story-reply-form" class="story-reply"><label class="sr-only" for="story-reply">Responder por mensaje directo</label><input id="story-reply" name="reply" maxlength="1000" required placeholder="Enviar un mensaje…"><button type="submit" aria-label="Enviar respuesta">${ui.icon('send')}</button></form>`}<button class="reaction" id="story-like" data-feature="story-like" aria-label="Me gusta la historia" aria-pressed="${!!community.state.storyLikes[s.id]}">${ui.icon('heart', !!community.state.storyLikes[s.id])}</button></footer>` : `<div class="locked-media">${ui.icon('lock')}<strong>Historia exclusiva</strong><p>Suscríbete a ${e(user.name)} para verla.</p><a class="button-primary" href="${ui.profileUrl(user.id)}">Ver perfil</a></div>`}<button class="story-arrow story-previous" data-feature="previous-story" aria-label="Historia anterior" ${index === 0 ? 'disabled' : ''}>‹</button><button class="story-arrow story-next" data-feature="next-story" aria-label="Historia siguiente" ${index === list.length - 1 ? 'disabled' : ''}>›</button></div>`;
+        return `<div class="story-stage"><header class="story-overlay-header"><div class="story-segments">${list.map((item, i) => `<span class="${i < index ? 'passed' : i === index ? 'current' : ''}"></span>`).join('')}</div><div class="story-meta"><a class="author-link" href="${ui.profileUrl(user.id)}">${ui.avatar(user)}<span><strong>${e(user.name)}</strong><small id="story-time"></small></span></a>${s.media[0]?.kind === 'video' ? '<button class="story-sound" data-story-sound>Silenciar</button>' : ''}<button class="story-close" data-action="close-modal" aria-label="Cerrar historia">${ui.icon('close')}</button></div></header>${viewable ? `<div class="story-content ${s.media.length ? '' : 'thought-story'}">${s.media.length ? (s.media[0].kind === 'image' ? `<img class="story-full-photo" data-asset="${e(s.media[0].id)}" alt="${e(s.media[0].name)}">` : `<video data-asset="${e(s.media[0].id)}" playsinline preload="auto" class="story-video"></video>`) : ''}${s.text ? `<p class="story-caption">${ui.richText(s.text)}</p>` : ''}</div><footer class="story-overlay-footer">${own ? `<button class="story-stat" data-feature="story-views" aria-label="Ver espectadores">${ui.icon('eye')} <span id="story-view-count">${s.viewCount || 0}</span></button><button class="story-stat" data-feature="delete-story" aria-label="Eliminar historia">${ui.icon('trash')}</button>` : `<form id="story-reply-form" class="story-reply"><label class="sr-only" for="story-reply">Responder por mensaje directo</label><input id="story-reply" name="reply" maxlength="1000" required placeholder="Enviar un mensaje…"><button type="submit" aria-label="Enviar respuesta">${ui.icon('send')}</button></form>`}<button class="reaction" id="story-like" data-feature="story-like" aria-label="Me gusta la historia" aria-pressed="${!!community.state.storyLikes[s.id]}">${ui.icon('heart', !!community.state.storyLikes[s.id])}<span id="story-like-count">${s.likeCount || 0}</span></button></footer>` : `<div class="locked-media">${ui.icon('lock')}<strong>Historia exclusiva</strong><p>Suscríbete a ${e(user.name)} para verla.</p><a class="button-primary" href="${ui.profileUrl(user.id)}">Ver perfil</a></div>`}<button class="story-arrow story-previous" data-feature="previous-story" aria-label="Historia anterior" ${index === 0 ? 'disabled' : ''}>‹</button><button class="story-arrow story-next" data-feature="next-story" aria-label="Historia siguiente" ${index === list.length - 1 ? 'disabled' : ''}>›</button></div>`;
     }
+    function moveStory(direction) { const list = community.stories(), index = list.findIndex(s => s.id === currentStory), next = list[index + direction]; if(next) openStory(next.id); else if(direction > 0) { storyPlayer?.dispose(); app.closeModal(); } }
     function openStory(id) {
+        storyPlayer?.dispose();
         $('story-view').querySelectorAll('video').forEach(video => video.pause());
         const s = community.story(id); if (!s || !community.stories().some(x => x.id === id)) return;
         currentStory = id;
@@ -100,21 +104,22 @@
         const user = store.user(s.creatorId), viewable = community.canViewStory(s), own = s.creatorId === 'demo';
         $('storyViewerModalTitle').textContent = user.name;
         $('story-view').innerHTML = storyMarkup(s, user, viewable, own);
-        media.hydrate($('story-view')); app.openModal('storyViewerModal'); updateStoryClock();
+        media.hydrate($('story-view')); app.openModal('storyViewerModal'); storyPlayer = window.FansxeStoryPlayer?.($('story-view').querySelector('.story-stage'), { next: () => moveStory(1), previous: () => moveStory(-1), playable: viewable }); updateStoryClock();
     }
     function updateStoryClock() {
         if (!currentStory || app.activeModal !== 'storyViewerModal') return;
         const s = community.story(currentStory);
         if (!s || !community.stories().some(x => x.id === currentStory)) {
+            storyPlayer?.dispose();
             $('story-view').querySelectorAll('video').forEach(v => v.pause());
             $('story-view').innerHTML = '<div class="empty-state"><button class="button-secondary" data-action="close-modal">Cerrar historia</button><h3>Esta historia ya no está disponible</h3><p>Las historias duran 24 horas y solo se muestran si sigues a su autor.</p></div>'; currentStory = null; shelf(); return;
         }
         if (!community.canViewStory(s) && $('story-reply-form')) { openStory(currentStory); return; }
         const remaining = Math.max(0, s.expiresAt - Date.now());
-        if ($('story-time')) $('story-time').textContent = `${Math.floor(remaining / 3600000)} h ${Math.floor(remaining / 60000) % 60} min restantes`;
+        if ($('story-time')) $('story-time').textContent = ui.relativeTime(s.createdAt);
         if ($('story-lifetime')) $('story-lifetime').style.width = `${remaining / 86400000 * 100}%`;
         const like = $('story-like');
-        if (like) { like.classList.toggle('is-liked', !!community.state.storyLikes[currentStory]); like.setAttribute('aria-pressed', String(!!community.state.storyLikes[currentStory])); like.innerHTML = ui.icon('heart', !!community.state.storyLikes[currentStory]); }
+        if (like) { like.classList.toggle('is-liked', !!community.state.storyLikes[currentStory]); like.setAttribute('aria-pressed', String(!!community.state.storyLikes[currentStory])); like.innerHTML = ui.icon('heart', !!community.state.storyLikes[currentStory]) + `<span>${s.likeCount || 0}</span>`; if ($('story-view-count')) $('story-view-count').textContent = s.viewCount || 0; }
     }
     async function work(form, action) {
         if (busy || app.busy) return;
@@ -128,6 +133,20 @@
         const filter = event.target.closest('[data-admin-filter]'); if (filter) { adminFilter = filter.dataset.adminFilter; renderAdmin(); return; }
         const button = event.target.closest('[data-feature]'); if (!button) return;
         switch (button.dataset.feature) {
+            case 'story-views': {
+                const s = community.story(currentStory); if (!s || s.creatorId !== 'demo') break;
+                storyPlayer?.pause(true);
+                $('story-viewers').innerHTML = (s.viewers || []).length ? s.viewers.map(v => { const u = store.user(v.userId); return `<a class="person-row" href="${ui.profileUrl(v.userId)}">${ui.avatar(u)}<span><strong>${e(u?.name || 'Usuario')}</strong><small>@${e(u?.handle || '')}</small></span>${v.liked ? ui.icon('heart', true) : ''}</a>`; }).join('') : '<p class="empty-state">Todavía no hay visualizaciones.</p>';
+                media.hydrate($('story-viewers')); app.openModal('storyViewsModal'); break;
+            }
+            case 'delete-story': deletingStory = currentStory; storyPlayer?.pause(true); app.openModal('deleteStoryModal'); break;
+            case 'confirm-delete-story': {
+                button.disabled = true;
+                const result = await community.deleteStory?.(deletingStory);
+                button.disabled = false;
+                if (result) { currentStory = null; deletingStory = null; storyPlayer?.dispose(); app.closeModal(); shelf(); app.notify('Historia eliminada.'); }
+                break;
+            }
             case 'badges': badgeOptions(); app.openModal('badgesModal'); break;
             case 'review': review(button.dataset.request); break;
             case 'create-story': privacyHint(); app.openModal('storyComposeModal'); break;
@@ -151,7 +170,7 @@
         if (form.id === 'email-form') { if ((window.FansxeBoot ? await community.setEmail(form.elements.email.value, form.elements.current?.value) : community.setEmail(form.elements.email.value))) app.notify(window.FansxeBoot ? 'Correo actualizado.' : 'Correo actualizado en la demo.'); else app.notify('No se pudo guardar el correo.'); }
         if (form.id === 'password-form') {
             const { current, password, confirm } = form.elements, values = [current.value, password.value, confirm.value];
-            await work(form, async () => { const result = await community.changePassword(...values); if (result !== 'success') throw Error(result === 'incorrect' ? 'La contraseña actual no coincide.' : 'Revisa las contraseñas: deben coincidir y tener de 10 a 128 caracteres.'); form.reset(); app.notify(window.FansxeBoot ? 'Contraseña actualizada.' : 'Contraseña local de prueba actualizada.'); });
+            await work(form, async () => { const result = await community.changePassword(...values); if (result !== 'success') throw Error(result === 'incorrect' ? 'La contraseña actual no coincide.' : 'Revisa las contraseñas: deben coincidir y tener de 8 a 128 caracteres.'); form.reset(); app.notify(window.FansxeBoot ? 'Contraseña actualizada.' : 'Contraseña local de prueba actualizada.'); });
         }
         if (form.id === 'age-form') {
             if (!agePicker.count || !$('adult-declaration').checked) return app.notify('Añade la fotografía y confirma la declaración de mayoría de edad.');
@@ -184,7 +203,10 @@
     if (page === 'admin') admin();
     if (page === 'inicio') { const shelfNode = document.createElement('section'); shelfNode.id = 'story-shelf'; shelfNode.className = 'story-shelf'; shelfNode.setAttribute('aria-label', 'Historias de 24 horas'); $('page-content').prepend(shelfNode); }
     window.addEventListener('fansxe:change', refresh);
-    window.addEventListener('fansxe:modal-closed', event => { if (event.detail === 'storyViewerModal') currentStory = null; });
+    window.addEventListener('fansxe:modal-closed', event => {
+        if (event.detail === 'storyViewerModal') { storyPlayer?.dispose(); currentStory = null; }
+        if (['storyViewsModal','deleteStoryModal'].includes(event.detail) && currentStory) setTimeout(() => { if (currentStory) openStory(currentStory); }, 0);
+    });
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
     document.addEventListener('keydown', event => {

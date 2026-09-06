@@ -1,8 +1,9 @@
 (() => {
     'use strict';
     const store = FansxeStore, ui = FansxeComponents, media = FansxeMedia;
+    setInterval(ui.refreshTimes, 60000);
     const page = document.body.dataset.page, query = new URLSearchParams(location.search);
-    if (window.FansxeAuth && !FansxeAuth.session() && page !== 'admin') return;
+    if (window.FansxeAuth && !FansxeAuth.session() && !window.FansxeBoot?.guest && page !== 'admin') return;
     const profileId = query.get('user') === window.FansxeBoot?.selfId ? 'demo' : query.get('user') || 'demo';
     const $ = id => document.getElementById(id);
     let filter = 'todo', search = '', tag = query.get('tag') || '', creatorId = null;
@@ -28,7 +29,7 @@
         document.body.style.overflow = 'hidden';
         document.querySelector('body > .flex').inert = true;
         $('mobile-slot').inert = id !== 'mobileDrawer';
-        (content?.querySelector('input:not([type="file"]), textarea, button, a') || content)?.focus();
+        (id === 'storyViewerModal' ? content : content?.querySelector('input:not([type="file"]), textarea, button, a') || content)?.focus({ preventScroll: true });
     }
     function closeModal() {
         if (saving || !activeModal) return;
@@ -37,7 +38,7 @@
         if (activeModal === 'confirmRechargeModal') pendingRecharge = null;
         activeModal = null; document.body.style.overflow = '';
         document.querySelector('body > .flex').inert = false; $('mobile-slot').inert = false;
-        if (returnFocus?.isConnected) returnFocus.focus(); else $('page-title')?.focus();
+        if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true }); else $('page-title')?.focus({ preventScroll: true });
     }
     Object.assign(window, { openModal, closeModal, openDrawer: () => openModal('mobileDrawer'), closeDrawer: closeModal });
     $('sidebar-slot').innerHTML = FansxeLayout.sidebar;
@@ -45,7 +46,7 @@
     $('modals-slot').innerHTML = FansxeDialogs.html;
     $('modals-slot').insertAdjacentHTML('beforeend', `<div id="deletePostModal" class="app-modal hidden"><div class="modal-backdrop" data-action="close-modal"></div><section id="deletePostModalContent" class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="delete-title" tabindex="-1"><h2 id="delete-title" class="text-xl font-bold">¿Eliminar publicación?</h2><p class="my-4">Se eliminarán la publicación, sus comentarios y reacciones de esta demo. No puedes deshacerlo.</p><div class="form-footer"><button class="button-secondary" data-action="close-modal">Cancelar</button><button class="button-primary" data-action="confirm-delete">Eliminar publicación</button></div></section></div>`);
     const main = document.querySelector('main');
-    const titles = { inicio: 'Inicio', perfil: profileId === 'demo' ? 'Mi perfil' : 'Perfil', mensajes: 'Mensajes', notificaciones: 'Notificaciones', configuracion: 'Configuración', admin: 'Revisión de edad' };
+    const titles = { inicio: 'Inicio', perfil: profileId === 'demo' ? 'Mi perfil' : 'Perfil', mensajes: 'Mensajes', notificaciones: 'Notificaciones', configuracion: 'Configuración', admin: 'Administración', gemas: 'Gemas y Plus', creador: 'Mi espacio de creador' };
     main.innerHTML = `<header class="glass-header page-heading"><h1 id="page-title" tabindex="-1">${titles[page]}</h1><a id="account-link" href="${ui.profileUrl('demo')}" aria-label="Mi perfil">${ui.avatar(store.user('demo'))}</a></header><p class="demo-banner">Demo local · Publicaciones y archivos en este navegador · Sin cobros reales</p><div id="page-content"></div>`;
     document.querySelectorAll('#sidebar-slot a, #mobile-slot a').forEach(link => {
         const text = link.textContent.trim();
@@ -144,7 +145,17 @@
         $('page-content').innerHTML = `<div class="notification-toolbar"><p>Actividad de tu comunidad</p><button class="text-link" data-action="read-notifications">Marcar como leídas</button></div><p class="field-help px-5">Vista de diseño con actividad de ejemplo.</p>${FansxeData.notifications.map(n => { const user = store.user(n.userId); return `<a href="${ui.profileUrl(user.id)}" data-notification="${n.id}" class="notification-row ${store.state.readNotifications[n.id] ? '' : 'unread'}">${ui.avatar(user)}<div><p><strong>${ui.escape(user.name)}</strong> ${ui.escape(n.text)}</p><small>${ui.escape(n.time)} · Ejemplo</small></div><span class="notification-kind">${ui.icon(n.kind === 'like' ? 'heart' : n.kind === 'follow' ? 'people' : 'comment')}</span></a>`; }).join('')}`;
         media.hydrate($('page-content'));
     }
-    function updateState() {
+    function updateState(event) {
+        const change = event?.detail;
+        if (change && ['like', 'comment'].includes(change.action)) {
+            const p = store.post(change.id), card = document.querySelector(`.post-card[data-post="${change.id}"]`);
+            if (!p || !card) return;
+            const liked = !!store.state.likes[p.id], like = card.querySelector('[data-action="like"]');
+            like.classList.toggle('is-liked', liked); like.setAttribute('aria-pressed', String(liked)); like.innerHTML = ui.icon('heart', liked) + `<span>${ui.number(p.likes + (liked ? 1 : 0))}</span>`;
+            if (change.action === 'comment') { const comments = [...p.comments, ...(store.state.comments[p.id] || [])]; card.querySelector('.comment-list').innerHTML = comments.map(ui.comment).join(''); card.querySelector('[data-action="comments"] span').textContent = comments.length; }
+            return;
+        }
+        if (change && !['publish', 'delete-post', 'profile', 'follow', 'gem-purchase'].includes(change.action) && ['inicio','perfil'].includes(page)) return;
         document.querySelectorAll('.balance-display').forEach(el => { el.textContent = money(store.state.balanceCents); });
         if (pendingRecharge) $('recharge-total').textContent = money(store.state.balanceCents + pendingRecharge);
         $('account-link').innerHTML = ui.avatar(store.user('demo')); media.hydrate($('account-link'));
@@ -170,6 +181,19 @@
         if (result === 'storage') return;
         closeModal(); notify(result === 'subscribed' ? 'Ya tienes acceso a este perfil.' : subscribe ? 'Suscripción de demostración activada.' : 'Apoyo de demostración enviado.');
     }
+    let discoveryOffset=0, discoveryBusy=false, discoveryObserver;
+    async function discover(reset=false) {
+        if(discoveryBusy)return;discoveryBusy=true;
+        if(reset){discoveryOffset=0;$('people-list').innerHTML='';$('peopleModalTitle').textContent='Explorar personas';openModal('peopleModal');}
+        try {
+            const result=await store.discover(discoveryOffset);$('discover-more')?.remove();
+            $('people-list').insertAdjacentHTML('beforeend',result.ids.map(id=>ui.person(store.user(id),'follow')).join(''));discoveryOffset+=result.ids.length;
+            if(!discoveryOffset)$('people-list').innerHTML='<p class="empty-state">Pronto encontrarás nuevas personas aquí.</p>';
+            discoveryObserver?.disconnect();
+            if(result.hasMore){$('people-list').insertAdjacentHTML('beforeend','<button id="discover-more" class="button-secondary feed-more" data-action="discover-more">Ver más personas</button>');if(window.IntersectionObserver){discoveryObserver=new IntersectionObserver(entries=>{if(entries.some(x=>x.isIntersecting))discover();},{root:$('peopleModalContent'),rootMargin:'100px'});discoveryObserver.observe($('discover-more'));}}
+            media.hydrate($('people-list'));
+        }catch(error){notify(error.message);}finally{discoveryBusy=false;}
+    }
     document.addEventListener('click', async event => {
         if (!(event.target instanceof Element)) return;
         const notification = event.target.closest('[data-notification]');
@@ -182,6 +206,7 @@
         const button = event.target.closest('[data-action]'); if (!button || saving) return;
         const id = button.dataset.post, userId = button.dataset.user;
         switch (button.dataset.action) {
+            case 'discover-more': discover(); break;
             case 'load-more': feedLimit += 6; renderFeed(true); break;
             case 'delete-post': deleteId = id; openModal('deletePostModal'); break;
             case 'confirm-delete': if (deleteId && (window.FansxeBoot ? await store.deletePost(deleteId) : store.deletePost(deleteId))) { drafts.delete(deleteId); expanded.delete(deleteId); deleteId = null; closeModal(); notify('Publicación eliminada.'); } break;
@@ -191,7 +216,7 @@
             case 'remove-cover': removeCover = true; coverPicker.clear(); editMediaPreview(); break;
             case 'follow': store.toggleFollow(button.dataset.creator); break;
             case 'like': store.toggleLike(id); break;
-            case 'comments': expanded.has(id) ? expanded.delete(id) : expanded.add(id); renderFeed(); break;
+            case 'comments': expanded.has(id) ? expanded.delete(id) : expanded.add(id); $(`comments-${id}`).hidden = !expanded.has(id); button.setAttribute('aria-expanded', String(expanded.has(id))); break;
             case 'photo': $('modalImgViewer').src = store.post(id).image; $('modalImgViewer').alt = store.post(id).alt; openModal('imageModal'); break;
             case 'asset-photo':
                 try { $('modalImgViewer').src = await media.url(button.dataset.assetId); $('modalImgViewer').alt = 'Archivo adjunto ampliado'; openModal('imageModal'); } catch (error) { notify(error.message); } break;
@@ -209,7 +234,7 @@
             case 'chat-select': FansxeChat.open(userId); break;
             case 'chat-back': FansxeChat.back(); break;
             case 'read-notifications': store.markNotificationsRead(); break;
-            case 'discover': $('peopleModalTitle').textContent = 'Explorar personas'; $('people-list').innerHTML = store.users().filter(u => u.id !== 'demo').map(u => ui.person(u, 'follow')).join(''); media.hydrate($('people-list')); openModal('peopleModal'); break;
+            case 'discover': if(window.FansxeBoot){discover(true);break;} $('peopleModalTitle').textContent = 'Explorar personas'; $('people-list').innerHTML = store.users().filter(u => u.id !== 'demo').map(u => ui.person(u, 'follow')).join(''); media.hydrate($('people-list')); openModal('peopleModal'); break;
             case 'people': {
                 const own = userId === 'demo';
                 const ids = window.FansxeBoot ? await store.people(userId, button.dataset.list) : button.dataset.list === 'following' ? Object.keys(store.state.following).filter(id => store.state.following[id]) : own ? FansxeData.followers : store.state.following[userId] ? ['demo'] : [];
@@ -243,9 +268,9 @@
     $('mention-select').addEventListener('change', event => { if (event.target.value) insertText('@' + event.target.value + ' '); event.target.value = ''; });
     async function saveForm(form, work) {
         saving = true;
-        const controls = [...form.querySelectorAll('input, textarea, select, button')]; controls.forEach(el => { el.disabled = true; });
+        const controls = [...form.querySelectorAll('input, textarea, select, button')].map(el => ({ el, disabled: el.disabled })); controls.forEach(({ el }) => { el.disabled = true; });
         try { await work(); } catch (error) { notify(error.message); }
-        finally { saving = false; controls.forEach(el => { el.disabled = false; }); }
+        finally { saving = false; controls.forEach(({ el, disabled }) => { el.disabled = disabled; }); }
     }
     document.addEventListener('submit', async event => {
         const form = event.target;
@@ -274,6 +299,7 @@
         } else if (form.id === 'profile-form') {
             event.preventDefault(); if (saving || profileId !== 'demo') return;
             const fields = Object.fromEntries(['name', 'handle', 'bio', 'location'].map(key => [key, form.elements[key].value]));
+            if(window.FansxeBoot && store.user('demo').creatorStatus==='approved' && form.elements.subscriptionGems) fields.subscriptionGems=Number(form.elements.subscriptionGems.value);
             await saveForm(form, async () => {
                 const files = [];
                 try {

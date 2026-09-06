@@ -9,22 +9,26 @@
     let queue = Promise.resolve();
     function write(action, data = {}, failure = false) {
         const work = async () => {
+            if (!FansxeAuth.session()) { window.FansxeRequireAccount?.(); return failure; }
             try {
                 const result = await FansxeAPI(action, { ...data, feed: feedOptions });
                 apply(result.snapshot);
                 const first = result.snapshot.feed.posts;
                 // Keep already loaded pages; refresh their content individually on the next feed load.
-                const incoming = new Set(first.map(p => p.id)); posts = [...first, ...posts.filter(p => !incoming.has(p.id))];
+                if (result.post) posts = posts.map(p => p.id === result.post.id ? result.post : p);
+                else if (action === 'publish') { const incoming = new Set(first.map(p => p.id)); posts = [...first, ...posts.filter(p => !incoming.has(p.id))]; }
                 if (action === 'delete-post') posts = posts.filter(p => p.id !== data.id);
-                window.dispatchEvent(new CustomEvent('fansxe:change'));
+                window.dispatchEvent(new CustomEvent('fansxe:change', { detail: { action, id: data.id } }));
                 return result.result;
             } catch (error) { window.FansxeApp?.notify(error.message); return failure; }
         };
         const next = queue.then(work, work); queue = next.catch(() => {}); return next;
     }
     window.FansxeStore = {
-        get state() { return { ...snapshot.state, posts }; }, persistent: true,
+        write, get commerce() { return snapshot.commerce; },
+        get state() { return { ...snapshot.state, gemBalance: snapshot.commerce?.balance || 0, posts }; }, persistent: true,
         users, user, posts: () => posts, post: id => posts.find(p => p.id === id), canRead, canMessage,
+        async discover(offset) { const response=await fetch('/api/index.php?action=discover&offset='+offset);const result=await response.json();if(!response.ok)throw Error(result.error);for(const u of result.users)FansxeData.creators[u.id]||=u;return result; },
         async people(id, list) { const response = await fetch('/api/index.php?' + new URLSearchParams({ action: 'people', user: id, list })); const data = await response.json(); return data.ids || []; },
         toggleLike: id => write('like', { id }), toggleFollow: id => write('follow', { id }),
         addComment: (id, text) => write('comment', { id, text }),
@@ -64,23 +68,24 @@
         return catalog.filter(b => flags[b.id]);
     };
     window.FansxeCommunity = {
-        get state() { return snapshot.community; }, latest, canPublishPrivate: () => latest()?.status === 'approved', badgeCatalog: catalog, earned,
+        get state() { return snapshot.community; }, latest, canPublishPrivate: () => latest()?.status === 'approved' && user('demo')?.creatorStatus === 'approved', badgeCatalog: catalog, earned,
         shownBadges: id => earned(id).filter(b => !user(id)?.hiddenBadges.includes(b.id)),
         setBadge: (id, shown) => write('badge', { id, shown }), setTheme: theme => write('theme', { theme }),
         setEmail: (email, current) => write('email', { email, current }), changePassword: (current, password, confirm) => write('password', { current, password, confirm }, 'storage'),
         submitAge: document => write('age', { document, adult: true }), reviewAge: (id, decision, note, adult) => write('review', { id, decision, note, adult }),
         stories: () => snapshot.community.stories.filter(visible), story: id => snapshot.community.stories.find(s => s.id === id),
         canViewStory: s => visible(s) && canRead(s), publishStory: (text, media, visibility) => write('publish-story', { text, media, visibility }),
+        deleteStory: id => write('delete-story', { id }),
         markStorySeen: id => write('story-seen', { id }), toggleStoryLike: id => write('story-like', { id }), replyStory: (id, text) => write('story-reply', { id, text })
     };
     // Poll received activity without rewriting a post draft or replacing an open conversation.
     let polling = false;
     setInterval(async () => {
-        if (document.hidden || polling) return; polling = true;
+        if (document.hidden || polling || !FansxeAuth.session()) return; polling = true;
         try {
             await queue; const next = await FansxeAPI('state');
             const changed = JSON.stringify(snapshot.state.conversations) !== JSON.stringify(next.state.conversations) || JSON.stringify(snapshot.community.requests) !== JSON.stringify(next.community.requests) || JSON.stringify(snapshot.community.stories) !== JSON.stringify(next.community.stories) || JSON.stringify(snapshot.data.notifications) !== JSON.stringify(next.data.notifications);
-            apply(next); if (changed) window.dispatchEvent(new CustomEvent('fansxe:change'));
+            apply(next); if (changed) window.dispatchEvent(new CustomEvent('fansxe:change', { detail: { action: 'poll' } }));
         } catch {} finally { polling = false; }
     }, 10000);
 })();

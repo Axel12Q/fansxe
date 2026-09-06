@@ -32,9 +32,10 @@ function timestamp(string $date): int { return (int)(strtotime($date.' UTC')*100
 function start_session(): void {
  if (session_status()===PHP_SESSION_ACTIVE) return;
  ini_set('session.use_strict_mode','1'); ini_set('session.use_only_cookies','1');
- session_name('fansxe_session'); session_set_cookie_params(['lifetime'=>0,'path'=>'/','secure'=>config()['secure_cookies'],'httponly'=>true,'samesite'=>'Lax']); session_start();
+ session_name('fansxe_session'); session_set_cookie_params(['lifetime'=>2592000,'path'=>'/','secure'=>config()['secure_cookies'],'httponly'=>true,'samesite'=>'Lax']); session_start();
  if (isset($_SESSION['expires']) && $_SESSION['expires']<time()) { $_SESSION=[]; session_regenerate_id(true); }
  $_SESSION['csrf'] ??= bin2hex(random_bytes(32));
+ if (empty($_SESSION['user']) && !empty($_COOKIE['fansxe_remember'])) restore_login();
  header('Cache-Control: no-store'); header('X-Content-Type-Options: nosniff'); header('Referrer-Policy: same-origin'); header('X-Frame-Options: DENY');
 }
 function viewer(bool $required=true): ?array {
@@ -43,7 +44,27 @@ function viewer(bool $required=true): ?array {
  if (!$user && $required) fail('Inicia sesión para continuar.',401);
  return $user;
 }
-function login_user(array $u): void { session_regenerate_id(true); $_SESSION=['user'=>$u['id'],'version'=>(int)$u['session_version'],'expires'=>time()+86400,'csrf'=>bin2hex(random_bytes(32))]; }
+function remember_cookie(string $value,int $expires): void { setcookie('fansxe_remember',$value,['expires'=>$expires,'path'=>'/','secure'=>config()['secure_cookies'],'httponly'=>true,'samesite'=>'Lax']); }
+function forget_login(): void {
+ $selector=explode('.',$_COOKIE['fansxe_remember']??'')[0];
+ if(preg_match('/^[a-f0-9]{32}$/D',$selector))query('DELETE FROM remembered_sessions WHERE selector=?',[$selector]);
+ remember_cookie('',time()-3600);
+}
+function login_user(array $u,bool $remember=true): void {
+ session_regenerate_id(true); $_SESSION=['user'=>$u['id'],'version'=>(int)$u['session_version'],'expires'=>time()+2592000,'csrf'=>bin2hex(random_bytes(32))];
+ if($remember) {
+  forget_login(); $selector=uid();$validator=bin2hex(random_bytes(32));
+  query('INSERT INTO remembered_sessions(selector,validator_hash,user_id,session_version,expires_at) VALUES(?,?,?,?,DATE_ADD(NOW(),INTERVAL 30 DAY))',[$selector,hash('sha256',$validator),$u['id'],$u['session_version']]);
+  remember_cookie($selector.'.'.$validator,time()+2592000);
+ }
+}
+function restore_login(): void {
+ $parts=explode('.',$_COOKIE['fansxe_remember']);if(count($parts)!==2 || !preg_match('/^[a-f0-9]{32}$/D',$parts[0]) || !preg_match('/^[a-f0-9]{64}$/D',$parts[1]))return;
+ $r=row('SELECT r.validator_hash,r.session_version remembered_version,u.* FROM remembered_sessions r JOIN users u ON u.id=r.user_id WHERE r.selector=? AND r.expires_at>NOW()',[$parts[0]]);
+ if(!$r || $r['remembered_version']!==$r['session_version'] || !hash_equals($r['validator_hash'],hash('sha256',$parts[1]))) {forget_login();return;}
+ login_user($r,false);
+}
+function guest(): array { return ['id'=>'','email'=>'','name'=>'Visitante','role'=>'guest','theme'=>'light','hidden_badges'=>'[]','creator_status'=>'none','subscription_gems'=>100,'creator_note'=>'','plus_expires_at'=>null]; }
 function csrf(): void { if (!hash_equals($_SESSION['csrf'],$_SERVER['HTTP_X_CSRF_TOKEN']??'')) fail('La sesión cambió. Recarga la página.',403); }
 function limited(string $key,int $max=30,int $seconds=900): void {
  $key=hash('sha256',$key); $now=time();
