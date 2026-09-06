@@ -1,0 +1,8 @@
+Options -Indexes
+RewriteEngine On
+RewriteRule ^(?:server|database|scripts|tests|node_modules|\.git|\.github)(?:/|$) - [F,L]
+RewriteRule ^(?:\.env.*|package\.json|pnpm-lock\.yaml|README\.md)$ - [F,L]
+RewriteRule ^(inicio|perfil|mensajes|notificaciones|configuracion|admin|login|registro|recuperar)\.html$ server/page.php?page=$1 [QSA,END]
+<FilesMatch "^\.">
+ Require all denied
+</FilesMatch>
