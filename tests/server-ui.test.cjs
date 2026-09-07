@@ -16,7 +16,7 @@ function load(t, file, boot = fixture()) {
     let html = fs.readFileSync(path.join(root, file), 'utf8').replace('assets/js/auth.js','assets/js/server-auth.js');
     for (const name of ['data','store','community-store']) html = html.replace(`<script src="assets/js/${name}.js" defer></script>`, '');
     html = html.replace('<script src="assets/js/media.js" defer></script>', '<script src="assets/js/server-store.js" defer></script><script src="assets/js/media.js" defer></script>');
-    html = html.replace('</body>', '<script src="assets/js/server-ui.js" defer></script><script src="assets/js/commerce.js" defer></script></body>');
+    html = html.replace('</body>', '<script src="assets/js/server-ui.js" defer></script><script src="assets/js/commerce.js" defer></script><script src="assets/js/highlights.js" defer></script></body>');
     const errors = [], calls = [], vc = new VirtualConsole(); vc.on('jsdomError', e => errors.push(e.message));
     const dom = new JSDOM(html, { url: 'https://fansxe.com/'+file, runScripts: 'outside-only', virtualConsole: vc });
     t.after(() => dom.window.close());const w=dom.window;w.FansxeBoot=boot;w.tailwind={};w.scrollTo=()=>{};
@@ -57,4 +57,23 @@ test('PHP adapter awaits server acknowledgement and includes CSRF on writes', as
     const pending=c.w.FansxeStore.publish('Server post',[],'public');assert.equal(typeof pending.then,'function');assert.equal(await pending,true);
     const call=c.calls.find(c=>c.url.includes('action=publish'));assert.equal(call.options.headers['X-CSRF-Token'],'test');
     assert.equal(JSON.parse(call.options.body).text,'Server post');assert.equal(c.w.localStorage.getItem('fansxe.demo.v1'),null);
+});
+
+test('received messages align left, unread chats are marked and story replies open over the chat', async t => {
+ const boot=fixture();boot.data.creators.other={...boot.data.creators.demo,id:'other',name:'Other',handle:'other'};boot.state.following.other=true;
+ const story={id:'story1',creatorId:'demo',text:'A memory',media:[],visibility:'public',createdAt:Date.now(),expiresAt:Date.now()+60000,available:true};boot.community.stories=[story];
+ boot.state.conversations.other={userId:'other',unreadCount:1,messages:[{id:'m1',senderId:'demo',text:'Hello',media:[],createdAt:new Date().toISOString(),read:true},{id:'m2',senderId:'other',text:'A reply',media:[],createdAt:new Date().toISOString(),read:false,storyReply:true,story}]};
+ const c=load(t,'mensajes.html',boot);await tick();assert.ok(c.d.querySelector('.conversation-unread'));
+ c.d.querySelector('[data-action="chat-select"]').click();await tick();assert.equal(c.d.querySelectorAll('.message-own').length,1);assert.equal(c.d.querySelectorAll('.message-incoming').length,1);
+ c.d.querySelector('[data-chat-story]').click();assert.equal(c.w.FansxeApp.activeModal,'storyViewerModal');assert.ok(c.d.querySelector('#chat-text'));
+ c.w.FansxeApp.closeModal();assert.equal(c.w.FansxeChat.activeUser,'other');assert.deepEqual(c.errors,[]);
+});
+test('highlights can be edited from the profile with archived stories and group names',async t=>{
+ const boot=fixture();boot.community.stories=[{id:'old',creatorId:'demo',text:'Saved thought',media:[],visibility:'public',createdAt:Date.now()-90000000,expiresAt:Date.now()-1000,available:true,highlights:[{id:'group',name:'Memories'}]}];boot.community.highlights=[{id:'group',userId:'demo',name:'Memories',coverAsset:null,stories:['old']}];
+ const c=load(t,'perfil.html',boot);await tick();assert.match(c.d.querySelector('#profile-highlights').textContent,/Memories/);
+ c.d.querySelector('[data-highlight-open]').click();assert.equal(c.w.FansxeApp.activeModal,'storyViewerModal');assert.match(c.d.querySelector('.story-highlight-label').textContent,/Memories/);c.w.FansxeApp.closeModal();
+ c.d.querySelector('[data-highlight-manage="group"]').click();assert.equal(c.w.FansxeApp.activeModal,'highlightModal');assert.equal(c.d.querySelector('#highlight-name').value,'Memories');assert.ok(c.d.querySelector('#highlight-story-options input').checked);assert.deepEqual(c.errors,[]);
+});
+test('Plus style fields are scoped to the profile and disabled without Plus',async t=>{
+ const c=load(t,'perfil.html');await tick();c.d.querySelector('[data-action="edit-profile"]').click();assert.ok(c.d.querySelector('#profile-accent').disabled);assert.equal(c.d.querySelector('#page-content').dataset.profileAccent,'purple');assert.deepEqual(c.errors,[]);
 });

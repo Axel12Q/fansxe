@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/welcome.php';
+require_once __DIR__.'/google.php';
 function auth_action(string $action,array $d): never {
+ if($action==='google')google_action($d);
  $ip=$_SERVER['REMOTE_ADDR']??'cli'; limited('auth:'.$ip,40);
  $email=strtolower(ltrim(str_value($d,'email',254),'@'));
  if($action==='login') {
@@ -21,7 +24,7 @@ function auth_action(string $action,array $d): never {
   if(row('SELECT id FROM users WHERE handle=?',[$handle]))fail('Ese username ya está en uso.');
   $id=uid();
   query('INSERT INTO users(id,email,handle,name,password_hash,adult_declared_at) VALUES(?,?,?,?,?,NOW())',[$id,$email,$handle,$name,password_hash($password,PASSWORD_ARGON2ID)]);
-  login_user(row('SELECT * FROM users WHERE id=?',[$id])); output(['ok'=>true]);
+  $u=row('SELECT * FROM users WHERE id=?',[$id]);login_user($u);welcome_user($u); output(['ok'=>true]);
  }
  if($action==='recovery') {
   limited('recovery:'.$ip,5,3600);

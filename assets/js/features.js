@@ -4,7 +4,8 @@
     const $ = id => document.getElementById(id), page = document.body.dataset.page;
     const e = ui.escape;
     const statusNames = { pending: 'En revisión', approved: 'Aprobada', changes: 'Nueva fotografía solicitada', rejected: 'Rechazada', none: 'Sin verificar' };
-    let storyPlayer, deletingStory = null;
+    let storyPlayer, deletingStory = null, storyContext=null;
+    const viewerStories=()=>storyContext?storyContext.map(id=>community.story(id)).filter(s=>s&&(s.expiresAt>Date.now()||s.highlights?.length||s.creatorId==='demo')):community.stories();
     let busy = false, activeRequest = null, adminFilter = 'pending', currentStory = null, shelfKey = '';
     const date = value => new Date(value).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
     function dialog(id, title, body, wide = false) {
@@ -91,16 +92,16 @@
         media.hydrate($('story-shelf'));
     }
     function storyMarkup(s, user, viewable, own) {
-        const list = community.stories(), index = list.findIndex(item => item.id === s.id);
-        return `<div class="story-stage"><header class="story-overlay-header"><div class="story-segments">${list.map((item, i) => `<span class="${i < index ? 'passed' : i === index ? 'current' : ''}"></span>`).join('')}</div><div class="story-meta"><a class="author-link" href="${ui.profileUrl(user.id)}">${ui.avatar(user)}<span><strong>${e(user.name)}</strong><small id="story-time"></small></span></a>${s.media[0]?.kind === 'video' ? '<button class="story-sound" data-story-sound>Silenciar</button>' : ''}<button class="story-close" data-action="close-modal" aria-label="Cerrar historia">${ui.icon('close')}</button></div></header>${viewable ? `<div class="story-content ${s.media.length ? '' : 'thought-story'}">${s.media.length ? (s.media[0].kind === 'image' ? `<img class="story-full-photo" data-asset="${e(s.media[0].id)}" alt="${e(s.media[0].name)}">` : `<video data-asset="${e(s.media[0].id)}" playsinline preload="auto" class="story-video"></video>`) : ''}${s.text ? `<p class="story-caption">${ui.richText(s.text)}</p>` : ''}</div><footer class="story-overlay-footer">${own ? `<button class="story-stat" data-feature="story-views" aria-label="Ver espectadores">${ui.icon('eye')} <span id="story-view-count">${s.viewCount || 0}</span></button><button class="story-stat" data-feature="delete-story" aria-label="Eliminar historia">${ui.icon('trash')}</button>` : `<form id="story-reply-form" class="story-reply"><label class="sr-only" for="story-reply">Responder por mensaje directo</label><input id="story-reply" name="reply" maxlength="1000" required placeholder="Enviar un mensaje…"><button type="submit" aria-label="Enviar respuesta">${ui.icon('send')}</button></form>`}<button class="reaction" id="story-like" data-feature="story-like" aria-label="Me gusta la historia" aria-pressed="${!!community.state.storyLikes[s.id]}">${ui.icon('heart', !!community.state.storyLikes[s.id])}<span id="story-like-count">${s.likeCount || 0}</span></button></footer>` : `<div class="locked-media">${ui.icon('lock')}<strong>Historia exclusiva</strong><p>Suscríbete a ${e(user.name)} para verla.</p><a class="button-primary" href="${ui.profileUrl(user.id)}">Ver perfil</a></div>`}<button class="story-arrow story-previous" data-feature="previous-story" aria-label="Historia anterior" ${index === 0 ? 'disabled' : ''}>‹</button><button class="story-arrow story-next" data-feature="next-story" aria-label="Historia siguiente" ${index === list.length - 1 ? 'disabled' : ''}>›</button></div>`;
+        const list = viewerStories(), index = list.findIndex(item => item.id === s.id);
+        return `<div class="story-stage"><header class="story-overlay-header"><div class="story-segments">${list.map((item, i) => `<span class="${i < index ? 'passed' : i === index ? 'current' : ''}"></span>`).join('')}</div><div class="story-meta"><a class="author-link" href="${ui.profileUrl(user.id)}">${ui.avatar(user)}<span><strong>${e(user.name)}</strong><small id="story-time"></small>${s.highlights?.length ? `<small class="story-highlight-label">✦ ${s.highlights.map(h=>e(h.name)).join(' · ')}</small>` : ''}</span></a>${s.media[0]?.kind === 'video' ? '<button class="story-sound" data-story-sound>Silenciar</button>' : ''}<button class="story-close" data-action="close-modal" aria-label="Cerrar historia">${ui.icon('close')}</button></div></header>${viewable ? `<div class="story-content ${s.media.length ? '' : 'thought-story'}">${s.media.length ? (s.media[0].kind === 'image' ? `<img class="story-full-photo" data-asset="${e(s.media[0].id)}" alt="${e(s.media[0].name)}">` : `<video data-asset="${e(s.media[0].id)}" playsinline preload="auto" class="story-video"></video>`) : ''}${s.text ? `<p class="story-caption">${ui.richText(s.text)}</p>` : ''}</div><footer class="story-overlay-footer">${own ? `${window.FansxeBoot ? `<button class="story-stat" data-highlight-story="${s.id}" aria-label="Añadir a destacadas">✦</button>` : ''}<button class="story-stat" data-feature="story-views" aria-label="Ver espectadores">${ui.icon('eye')} <span id="story-view-count">${s.viewCount || 0}</span></button><button class="story-stat" data-feature="delete-story" aria-label="Eliminar historia">${ui.icon('trash')}</button>` : `<form id="story-reply-form" class="story-reply"><label class="sr-only" for="story-reply">Responder por mensaje directo</label><input id="story-reply" name="reply" maxlength="1000" required placeholder="Enviar un mensaje…"><button type="submit" aria-label="Enviar respuesta">${ui.icon('send')}</button></form>`}<button class="reaction" id="story-like" data-feature="story-like" aria-label="Me gusta la historia" aria-pressed="${!!community.state.storyLikes[s.id]}">${ui.icon('heart', !!community.state.storyLikes[s.id])}<span id="story-like-count">${s.likeCount || 0}</span></button></footer>` : `<div class="locked-media">${ui.icon('lock')}<strong>Historia exclusiva</strong><p>Suscríbete a ${e(user.name)} para verla.</p><a class="button-primary" href="${ui.profileUrl(user.id)}">Ver perfil</a></div>`}<button class="story-arrow story-previous" data-feature="previous-story" aria-label="Historia anterior" ${index === 0 ? 'disabled' : ''}>‹</button><button class="story-arrow story-next" data-feature="next-story" aria-label="Historia siguiente" ${index === list.length - 1 ? 'disabled' : ''}>›</button></div>`;
     }
-    function moveStory(direction) { const list = community.stories(), index = list.findIndex(s => s.id === currentStory), next = list[index + direction]; if(next) openStory(next.id); else if(direction > 0) { storyPlayer?.dispose(); app.closeModal(); } }
+    function moveStory(direction) { const list = viewerStories(), index = list.findIndex(s => s.id === currentStory), next = list[index + direction]; if(next) openStory(next.id); else if(direction > 0) { storyPlayer?.dispose(); app.closeModal(); } }
     function openStory(id) {
         storyPlayer?.dispose();
         $('story-view').querySelectorAll('video').forEach(video => video.pause());
-        const s = community.story(id); if (!s || !community.stories().some(x => x.id === id)) return;
+        const s = community.story(id); if (!s || !viewerStories().some(x => x.id === id)) return;
         currentStory = id;
-        community.markStorySeen(id);
+        if(community.canViewStory(s)&&(s.expiresAt>Date.now()||s.highlights?.length))community.markStorySeen(id);
         const user = store.user(s.creatorId), viewable = community.canViewStory(s), own = s.creatorId === 'demo';
         $('storyViewerModalTitle').textContent = user.name;
         $('story-view').innerHTML = storyMarkup(s, user, viewable, own);
@@ -109,7 +110,7 @@
     function updateStoryClock() {
         if (!currentStory || app.activeModal !== 'storyViewerModal') return;
         const s = community.story(currentStory);
-        if (!s || !community.stories().some(x => x.id === currentStory)) {
+        if (!s || !viewerStories().some(x => x.id === currentStory)) {
             storyPlayer?.dispose();
             $('story-view').querySelectorAll('video').forEach(v => v.pause());
             $('story-view').innerHTML = '<div class="empty-state"><button class="button-secondary" data-action="close-modal">Cerrar historia</button><h3>Esta historia ya no está disponible</h3><p>Las historias duran 24 horas y solo se muestran si sigues a su autor.</p></div>'; currentStory = null; shelf(); return;
@@ -150,10 +151,10 @@
             case 'badges': badgeOptions(); app.openModal('badgesModal'); break;
             case 'review': review(button.dataset.request); break;
             case 'create-story': privacyHint(); app.openModal('storyComposeModal'); break;
-            case 'view-stories': { const s = community.stories().find(s => s.creatorId === button.dataset.user); if (s) openStory(s.id); break; }
+            case 'view-stories': { storyContext=null;const s = community.stories().find(s => s.creatorId === button.dataset.user); if (s) openStory(s.id); break; }
             case 'story-like': if (!(window.FansxeBoot ? await community.toggleStoryLike(currentStory) : community.toggleStoryLike(currentStory))) app.notify('La historia ya no está disponible.'); break;
             case 'next-story': case 'previous-story': {
-                const list = community.stories(), index = list.findIndex(s => s.id === currentStory), next = index + (button.dataset.feature === 'next-story' ? 1 : -1);
+                const list = viewerStories(), index = list.findIndex(s => s.id === currentStory), next = index + (button.dataset.feature === 'next-story' ? 1 : -1);
                 if (next >= 0 && next < list.length) openStory(list[next].id); else app.notify(next < 0 ? 'Esta es la primera historia.' : 'Ya viste todas las historias.'); break;
             }
         }
@@ -198,7 +199,7 @@
         if (form.id === 'story-reply-form') { if ((window.FansxeBoot ? await community.replyStory(currentStory, form.elements.reply.value) : community.replyStory(currentStory, form.elements.reply.value))) { form.reset(); app.notify('Respuesta guardada en el chat del autor.'); } else app.notify('No se pudo responder: revisa el texto, el acceso y la vigencia de la historia.'); }
     });
     function refresh() { theme(); privacyHint(); renderBadges(); shelf(); updateStoryClock(); if (!busy) { updateSettings(); renderAdmin(); } }
-    window.FansxeFeatures = { renderBadges, refresh };
+    window.FansxeFeatures = { renderBadges, refresh, openStory(id,ids){storyContext=ids||[id];openStory(id);}, pauseStory(){storyPlayer?.pause(true);} };
     if (page === 'configuracion') settings();
     if (page === 'admin') admin();
     if (page === 'inicio') { const shelfNode = document.createElement('section'); shelfNode.id = 'story-shelf'; shelfNode.className = 'story-shelf'; shelfNode.setAttribute('aria-label', 'Historias de 24 horas'); $('page-content').prepend(shelfNode); }

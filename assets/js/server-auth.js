@@ -20,13 +20,12 @@
     document.addEventListener('DOMContentLoaded', () => {
         const form = document.getElementById('auth-form'), status = document.getElementById('auth-status');
         if (!form) return;
-        document.querySelector('.auth-demo').textContent = 'Tu cuenta y tus archivos se guardan en Fansxe. El acceso con Google todavía no está habilitado.';
+        document.querySelector('.auth-demo').textContent = 'Tu cuenta y tus archivos se guardan en Fansxe. Puedes entrar con tus datos o con Google.';
         const token = new URLSearchParams(location.search).get('token');
         if (form.dataset.mode === 'recovery' && token) {
             form.dataset.mode = 'reset';
             form.innerHTML = '<label class="form-label" for="auth-password">Nueva contraseña</label><input id="auth-password" name="password" class="text-field" type="password" minlength="8" maxlength="128" autocomplete="new-password" required><label class="form-label" for="auth-confirm">Repetir contraseña</label><input id="auth-confirm" name="confirm" class="text-field" type="password" minlength="8" maxlength="128" autocomplete="new-password" required><button class="public-primary auth-submit" type="submit">Guardar contraseña</button>';
         }
-        document.querySelector('[data-google]')?.addEventListener('click', () => { status.textContent = 'El acceso con Google todavía no está habilitado.'; });
         document.querySelector('[data-password-toggle]')?.addEventListener('click', e => { const field = form.elements.password; field.type = field.type === 'password' ? 'text' : 'password'; e.currentTarget.textContent = field.type === 'password' ? 'Mostrar' : 'Ocultar'; });
         form.addEventListener('submit', async event => {
             event.preventDefault(); const button = form.querySelector('[type="submit"]'); if (button.disabled) return;

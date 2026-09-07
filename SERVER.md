@@ -70,3 +70,16 @@ La primera instrucción prepara la versión y migra; la segunda activa el identi
 Las decisiones de autorización se hacen en PHP, incluidas las descargas. Los documentos solo se entregan al propietario o a administradores; los adjuntos de mensajes solo a participantes, incluso si otro usuario tiene rol administrador. Las historias caducadas y las publicaciones eliminadas dejan de servir sus archivos. Los archivos huérfanos y los documentos conservan sus registros físicos: falta definir y automatizar la política de retención y eliminación definitiva. La revisión de edad es manual, no un proveedor externo de validación de identidad.
 
 Hay límites de intentos de acceso y de escrituras, un máximo de 1 GB de archivos por usuario, consultas parametrizadas, CSRF y cookies de sesión HttpOnly/Secure/SameSite. Antes de abrir una operación comercial faltan pagos, OAuth, moderación/denuncias, política de retención, observabilidad y respaldo periódico de base y archivos.
+
+
+## Mensajes, destacadas y acceso con Google
+
+La migración 003 añade lectura de mensajes, referencias a historias, grupos de destacadas, estilos de perfil Plus y vínculos a Firebase. Las notificaciones dentro de Fansxe se actualizan por consulta cada diez segundos; no son notificaciones push del sistema operativo. Abrir una conversación marca sus mensajes entrantes como leídos. Las historias abiertas desde una respuesta se muestran sobre el chat y el botón Atrás lo conserva.
+
+Los autores conservan un archivo de sus historias. Las historias normales desaparecen a las 24 horas; las destacadas permanecen en el perfil hasta quitar su grupo o eliminar la historia. Las destacadas públicas pueden verse desde el perfil sin seguir al autor. Las privadas requieren suscripción vigente. Eliminar una historia retira su archivo de los accesos públicos y deja una referencia no disponible en los mensajes.
+
+Google utiliza el proyecto fansxe-44e1f y Firebase JS 12.18.0. PHP valida firma RS256, certificados públicos de Google, audiencia, emisor, caducidad, autenticación reciente y proveedor Google con correo verificado. Las nuevas cuentas eligen username y declaran 18+. Vincular una cuenta local existente exige su contraseña. Las identidades nuevas reciben una contraseña aleatoria no divulgada; pueden establecer una usando recuperación. La sesión de la web sigue siendo PHP. Los certificados se guardan en caché fuera de public; no se necesitan claves privadas de Firebase para validar tokens. Los navegadores deben permitir la ventana emergente de Google. La prueba interactiva final requiere que el propietario entre con su cuenta Google.
+
+El alta por contraseña y por Google envía un correo HTML de bienvenida desde soporte mediante el transporte de correo del hosting. welcome_mail registra aceptación del transporte, no lectura ni entrega definitiva. Un fallo de correo no impide crear la cuenta. Las cuentas .invalid de las pruebas no reciben correo. Se confirmó entrega a la bandeja de soporte de una muestra de la plantilla.
+
+Plus activa cuatro colores y tres bordes limitados al perfil. Mayor visibilidad y promoción están identificadas como próximas funciones, sin alterar por ahora el orden del feed. Compras y retiros continúan siendo simulados.

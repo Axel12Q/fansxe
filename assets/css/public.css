@@ -63,3 +63,5 @@
 #auth-status { margin-top: 1rem; font-size: .875rem; line-height: 1.6; color: #6d28d9; }
 @media(max-width:767px) { .public-nav-links a:not(.public-primary) { display:none; }.landing-hero,.creator-section,.auth-layout { grid-template-columns:1fr; gap:2rem; }.public-section { padding:3rem 1.25rem; }.hero-visual { max-width:26rem; margin:auto; }.floating-label.first { right:0; }.floating-label.second { left:0; }.feature-grid { grid-template-columns:1fr; }.creator-photo { height:20rem; }.landing-cta { margin:1rem; }.auth-layout { margin:1rem; }.auth-art { display:none; }.auth-card { padding:1.5rem; }.value-strip { gap:1rem; font-size:.8rem; } }
 @media(prefers-reduced-motion:reduce) { .floating-label { animation:none; }.reveal.animated { opacity:1; transform:none; transition:none; } }
+
+.google-onboarding h2{font-size:1.3rem;margin-top:1rem}.google-onboarding p{font-size:.9rem;line-height:1.6;color:#6b617b}.google-onboarding .text-link{display:inline-block;margin:.7rem 0}

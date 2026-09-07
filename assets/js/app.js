@@ -142,7 +142,7 @@
         window.FansxeFeatures?.renderBadges();
     }
     function notifications() {
-        $('page-content').innerHTML = `<div class="notification-toolbar"><p>Actividad de tu comunidad</p><button class="text-link" data-action="read-notifications">Marcar como leídas</button></div><p class="field-help px-5">Vista de diseño con actividad de ejemplo.</p>${FansxeData.notifications.map(n => { const user = store.user(n.userId); return `<a href="${ui.profileUrl(user.id)}" data-notification="${n.id}" class="notification-row ${store.state.readNotifications[n.id] ? '' : 'unread'}">${ui.avatar(user)}<div><p><strong>${ui.escape(user.name)}</strong> ${ui.escape(n.text)}</p><small>${ui.escape(n.time)} · Ejemplo</small></div><span class="notification-kind">${ui.icon(n.kind === 'like' ? 'heart' : n.kind === 'follow' ? 'people' : 'comment')}</span></a>`; }).join('')}`;
+        $('page-content').innerHTML = `<div class="notification-toolbar"><p>Actividad de tu comunidad</p><button class="text-link" data-action="read-notifications">Marcar como leídas</button></div><p class="field-help px-5">Vista de diseño con actividad de ejemplo.</p>${FansxeData.notifications.map(n => { const user = store.user(n.userId); return `<a href="${n.href || ui.profileUrl(user.id)}" data-notification="${n.id}" class="notification-row ${store.state.readNotifications[n.id] ? '' : 'unread'}">${ui.avatar(user)}<div><p><strong>${ui.escape(user.name)}</strong> ${ui.escape(n.text)}</p><small>${ui.escape(n.time)} · Ejemplo</small></div><span class="notification-kind">${ui.icon(n.kind === 'like' ? 'heart' : n.kind === 'follow' ? 'people' : 'comment')}</span></a>`; }).join('')}`;
         media.hydrate($('page-content'));
     }
     function updateState(event) {
@@ -299,6 +299,7 @@
         } else if (form.id === 'profile-form') {
             event.preventDefault(); if (saving || profileId !== 'demo') return;
             const fields = Object.fromEntries(['name', 'handle', 'bio', 'location'].map(key => [key, form.elements[key].value]));
+            if(window.FansxeBoot && store.user('demo').plus && form.elements.profileAccent){fields.profileAccent=form.elements.profileAccent.value;fields.profileBorder=form.elements.profileBorder.value;}
             if(window.FansxeBoot && store.user('demo').creatorStatus==='approved' && form.elements.subscriptionGems) fields.subscriptionGems=Number(form.elements.subscriptionGems.value);
             await saveForm(form, async () => {
                 const files = [];

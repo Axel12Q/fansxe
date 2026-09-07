@@ -2,6 +2,7 @@
 declare(strict_types=1);
 function mutate(string $action,array $d,array $u): mixed {
  if(in_array($action,['demo-recharge','gem-purchase','creator-request','creator-review','payout','payout-review'],true))return commerce_action($action,$d,$u);
+ if(in_array($action,['message-read','highlight-save','highlight-delete'],true))return social_action($action,$d,$u);
  $id=real_id((string)($d['id']??''),$u);
  switch($action) {
  case 'follow':
@@ -38,12 +39,18 @@ function mutate(string $action,array $d,array $u): mixed {
    $price=filter_var($f['subscriptionGems'],FILTER_VALIDATE_INT);if($price===false||$price<10||$price>100000)fail('El precio debe estar entre 10 y 100,000 gemas.');
    query('UPDATE users SET subscription_gems=? WHERE id=?',[$price,$u['id']]);
   }
+  if(isset($f['profileAccent'])||isset($f['profileBorder'])) {
+   if(!$u['plus_expires_at']||strtotime($u['plus_expires_at'])<=time())fail('La personalización del perfil requiere Plus activo.',403);
+   $accent=$f['profileAccent']??$u['profile_accent'];$border=$f['profileBorder']??$u['profile_border'];
+   if(!in_array($accent,['purple','rose','ocean','amber'],true)||!in_array($border,['soft','double','glow'],true))fail('Estilo no disponible.');
+   query('UPDATE users SET profile_accent=?,profile_border=? WHERE id=?',[$accent,$border,$u['id']]);
+  }
   query('UPDATE users SET name=?,handle=?,bio=?,location=?,avatar_asset=?,cover_asset=? WHERE id=?',[$name,strtolower($handle),str_value($f,'bio',500),str_value($f,'location',80),$avatar,$cover,$u['id']]); return 'success';
  case 'conversation': if(!can_message($id,$u['id'])) fail('Para conversar debe existir un seguimiento.',403); return true;
  case 'message':
   if(!can_message($id,$u['id'])) fail('Para conversar debe existir un seguimiento.',403);
   $text=str_value($d,'text',3000); $media=claim_media($d['media']??[],$u,'message',4); if(!$text&&!$media) fail('Escribe un mensaje.');
-  query('INSERT INTO messages(id,sender_id,recipient_id,text,media) VALUES(?,?,?,?,?)',[uid(),$u['id'],$id,$text,json_encode($media)]); return true;
+  send_message($u,$id,$text,$media); return true;
  case 'read': query('UPDATE notifications SET read_at=NOW() WHERE recipient_id=?'.($id?' AND id=?':''),$id?[$u['id'],$id]:[$u['id']]); return true;
  case 'theme': if(!in_array($d['theme']??'',['light','dark'],true)) fail('Tema inválido.'); query('UPDATE users SET theme=? WHERE id=?',[$d['theme'],$u['id']]); return true;
  case 'email':
@@ -78,12 +85,12 @@ function mutate(string $action,array $d,array $u): mixed {
   $s=row('SELECT * FROM stories WHERE id=? FOR UPDATE',[$id]);if(!$s||$s['creator_id']!==$u['id'])fail('Solo puedes eliminar tus historias.',403);
   query('DELETE FROM stories WHERE id=?',[$id]);return true;
  case 'story-seen': case 'story-like': case 'story-reply':
-  $s=row('SELECT * FROM stories WHERE id=? AND expires_at>NOW() FOR UPDATE',[$id]);
-  if(!$s || !readable($s,$u) || ($s['creator_id']!==$u['id']&&!row('SELECT 1 FROM follows WHERE follower_id=? AND creator_id=?',[$u['id'],$s['creator_id']]))) fail('La historia ya no está disponible.',403);
+  $s=row('SELECT * FROM stories WHERE id=? FOR UPDATE',[$id]);
+  if(!$s || !story_available($s,$u) || (strtotime($s['expires_at'])<=time()&&!row('SELECT 1 FROM highlight_stories WHERE story_id=?',[$id]))) fail('La historia ya no está disponible.',403);
   if($action==='story-reply') {
    if(!can_message($s['creator_id'],$u['id'])) fail('No puedes responder esta historia.',403);
-   $text='Respuesta a tu historia: '.str_value($d,'text',1000,true);
-   query('INSERT INTO messages(id,sender_id,recipient_id,text,media) VALUES(?,?,?,?,?)',[uid(),$u['id'],$s['creator_id'],$text,'[]']); return true;
+   $text=str_value($d,'text',1000,true);
+   send_message($u,$s['creator_id'],$text,[],$id); return true;
   }
   if($s['creator_id']===$u['id'])return true;
   query('INSERT IGNORE INTO story_reactions(story_id,user_id) VALUES(?,?)',[$id,$u['id']]);

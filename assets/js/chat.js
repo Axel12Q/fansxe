@@ -1,6 +1,11 @@
 (() => {
     const store = FansxeStore, ui = FansxeComponents;
-    let active = null, picker, busy = false, options;
+    let active = null, picker, busy = false, options, messageKey='', readBusy=false;
+    function markRead() {
+        if(!window.FansxeBoot||!active||document.hidden||window.FansxeApp?.activeModal||!$('chat-root')?.classList.contains('chat-selected')||readBusy)return;
+        const incoming=store.state.conversations[active]?.messages.filter(m=>m.senderId!=='demo'&&!m.read)||[];if(!incoming.length)return;
+        readBusy=true;store.markConversationRead(active,incoming.at(-1).id).finally(()=>{readBusy=false;});
+    }
     const drafts = new Map();
     const $ = id => document.getElementById(id);
     function people(query = '') {
@@ -12,16 +17,29 @@
         const list = Object.values(store.state.conversations).sort((a, b) => (b.messages.at(-1)?.createdAt || '').localeCompare(a.messages.at(-1)?.createdAt || ''));
         $('conversation-list').innerHTML = list.length ? list.map(c => {
             const user = store.user(c.userId), last = c.messages.at(-1);
-            return `<button class="conversation-row ${active === user.id ? 'selected' : ''}" data-action="chat-select" data-user="${user.id}" aria-pressed="${active === user.id}">${ui.avatar(user)}<span><strong>${ui.escape(user.name)}</strong><small>${last ? ui.escape(last.text || (last.media.some(a => a.kind === 'video') ? 'Video adjunto' : 'Foto adjunta')) : 'Nueva conversación'}</small></span></button>`;
+            return `<button class="conversation-row ${c.unreadCount ? 'conversation-unread' : ''} ${active === user.id ? 'selected' : ''}" data-action="chat-select" data-user="${user.id}" aria-pressed="${active === user.id}">${ui.avatar(user)}<span><strong>${ui.escape(user.name)}</strong><small>${last ? ui.escape(last.text || (last.media.some(a => a.kind === 'video') ? 'Video adjunto' : 'Foto adjunta')) : 'Nueva conversación'}</small></span>${c.unreadCount ? `<span class="chat-unread-count" aria-label="${c.unreadCount} mensajes sin leer">${c.unreadCount}</span>` : ''}</button>`;
         }).join('') : '<div class="empty-state"><p>Todavía no tienes conversaciones.</p><button class="text-link mt-3" data-action="new-chat">Iniciar una conversación</button></div>';
         FansxeMedia.hydrate($('conversation-list'));
     }
+    function storyPreview(story) {
+        if(!story)return '<div class="chat-story-preview unavailable">↩ Respuesta a una historia que ya no está disponible</div>';
+        const image=story.media?.[0]?.kind==='image'?`<img data-asset="${ui.escape(story.media[0].id)}" alt="Vista previa de la historia">`:'';
+        return `<button type="button" class="chat-story-preview" data-chat-story="${story.id}">${image}<span><small>↩ Respuesta a una historia${story.media?.[0]?.kind==='video'?' · Video':''}</small><strong>${ui.escape(story.text || 'Ver historia')}</strong></span>↗</button>`;
+    }
+    let storyHistory=false;
+    document.addEventListener('click',e=>{const b=e.target.closest('[data-chat-story]');if(b){history.pushState({fansxeChatStory:true},'',location.href);storyHistory=true;window.FansxeFeatures?.openStory(b.dataset.chatStory,[b.dataset.chatStory]);}});
+    window.addEventListener('popstate',()=>{if(storyHistory){storyHistory=false;if(window.FansxeApp?.activeModal==='storyViewerModal')FansxeApp.closeModal();}});
+    window.addEventListener('fansxe:modal-closed',e=>{if(e.detail==='storyViewerModal'&&storyHistory){storyHistory=false;if(history.state?.fansxeChatStory)history.back();}});
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)markRead();});
+    window.addEventListener('fansxe:modal-closed',()=>setTimeout(markRead,0));
     function renderMessages(scroll = false) {
         if (!active || !$('chat-messages')) return;
         const conversation = store.state.conversations[active];
         const target = $('chat-messages');
         const nearEnd = target.scrollHeight - target.scrollTop - target.clientHeight < 100;
-        target.innerHTML = conversation?.messages.length ? conversation.messages.map(m => `<article class="message-bubble"><p>${ui.richText(m.text)}</p>${ui.media(m.media)}<small>${ui.escape(new Date(m.createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }))} · Guardado localmente</small></article>`).join('') : '<div class="chat-start"><span class="empty-icon">♡</span><h3>Comienza la conversación</h3><p>Envía un saludo, una foto o un video.</p></div>';
+        const key=JSON.stringify(conversation?.messages.map(({read,...message})=>message));if(key===messageKey){markRead();return;}messageKey=key;
+        target.innerHTML = conversation?.messages.length ? conversation.messages.map(m => `<article class="message-bubble ${m.senderId === 'demo' ? 'message-own' : 'message-incoming'}">${m.storyReply ? storyPreview(m.story) : ''}<p>${ui.richText(m.text)}</p>${ui.media(m.media)}<small>${ui.escape(new Date(m.createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }))}${window.FansxeBoot ? '' : ' · Guardado localmente'}</small></article>`).join('') : '<div class="chat-start"><span class="empty-icon">♡</span><h3>Comienza la conversación</h3><p>Envía un saludo, una foto o un video.</p></div>';
+        markRead();
         const allowed = store.canMessage(active);
         $('chat-permission').hidden = allowed;
         $('chat-form').querySelectorAll('input, textarea, button').forEach(el => { el.disabled = !allowed || busy; });
@@ -34,7 +52,7 @@
         if (active && $('chat-text')) drafts.set(active, $('chat-text').value);
         picker?.clear();
         if (!store.state.conversations[id] && !(window.FansxeBoot ? await store.startConversation(id) : store.startConversation(id))) return;
-        active = id;
+        active = id;messageKey='';
         history.replaceState(null, '', `mensajes.html?user=${encodeURIComponent(id)}`);
         options.closeModal();
         const user = store.user(id);
@@ -59,7 +77,7 @@
             if (!(window.FansxeBoot ? await store.sendMessage(active, text, media) : store.sendMessage(active, text, media))) throw Error('No se pudo guardar el mensaje. Revisa el espacio disponible y la relación de seguimiento.');
             $('chat-text').value = ''; drafts.delete(active); picker.clear(); renderMessages(true);
         } catch (error) { await Promise.allSettled(media.map(a => FansxeMedia.remove(a.id))); options.notify(error.message); }
-        finally { busy = false; $('chat-form').querySelectorAll('input, textarea, button').forEach(el => { el.disabled = !store.canMessage(active); }); $('chat-text').focus(); }
+        finally { busy = false; $('chat-form').querySelectorAll('input, textarea, button').forEach(el => { el.disabled = !store.canMessage(active); }); $('chat-text').focus({preventScroll:true}); }
     }
     function init(config) {
         options = config;
@@ -70,7 +88,7 @@
         if (id) open(id);
     }
     window.FansxeChat = {
-        init, open, people,
+        init, open, people, get activeUser(){return $('chat-root')?.classList.contains('chat-selected')?active:null;},
         back() { if (busy) return; $('chat-root').classList.remove('chat-selected'); },
         render() { if (!$('chat-root')) return; renderList(); if (!busy) renderMessages(); },
         newConversation() { $('people-search').value = ''; people(); options.openModal('newChatModal'); }

@@ -28,7 +28,7 @@ try {
  csrf(); if($action==='upload')upload(viewer());
  if((int)($_SERVER['CONTENT_LENGTH']??0)>32768)fail('Solicitud demasiado grande.',413);
  $d=json_decode(file_get_contents('php://input'),true,32,JSON_THROW_ON_ERROR); if(!is_array($d))fail('Solicitud inválida.');
- if(in_array($action,['login','register','recovery','reset'],true))auth_action($action,$d);
+ if(in_array($action,['login','register','recovery','reset','google'],true))auth_action($action,$d);
  $u=viewer();if($action==='logout'){forget_login();$_SESSION=[];session_destroy();output(['ok'=>true]);}
  limited('write:'.$u['id'],200,60);
  if($action==='remove-file') {

@@ -3,9 +3,15 @@
     const set = (selector, text) => { const el = document.querySelector(selector); if (el) el.textContent = text; };
     set('.app-main > .demo-banner', FansxeBoot.guest ? 'Explora publicaciones públicas. Crea una cuenta para participar.' : 'Tu comunidad en Fansxe');
     set('#deletePostModal p', 'Se eliminarán la publicación, sus comentarios y reacciones. No puedes deshacerlo.');
+    function unreadBadges(){
+        const count=Object.values(FansxeStore.state.conversations).reduce((sum,c)=>sum+(c.unreadCount||0),0);
+        document.querySelectorAll('a[href="mensajes.html"]').forEach(a=>{a.classList.add('has-message-badge');let b=a.querySelector('.nav-message-count');if(!b){b=document.createElement('span');b.className='nav-message-count';a.append(b);}b.hidden=!count;b.textContent=count>99?'99+':String(count);b.setAttribute('aria-label',count+' mensajes sin leer');});
+    }
+    window.addEventListener('fansxe:change',unreadBadges);unreadBadges();
     set('.notification-toolbar + .field-help', 'Actividad reciente de tu comunidad.');
     if (document.body.dataset.page === 'configuracion') {
         set('#seguridad > .field-help', 'Usa una contraseña única. Al cambiarla se cerrarán tus otras sesiones.');
+        document.querySelector('#seguridad').insertAdjacentHTML('beforeend','<p class="field-help">Si te registraste con Google y aún no tienes contraseña, puedes <a class="text-link" href="recuperar.html">crear una mediante recuperación por correo</a>.</p>');
         set('#password-form .field-help', 'De 8 a 128 caracteres.');
         set('#password-form button[type="submit"]', 'Guardar contraseña');
         set('#edad > .demo-banner', 'El documento se guarda de forma privada y solo puede revisarlo el equipo administrador.');

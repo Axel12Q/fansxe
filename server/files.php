@@ -21,14 +21,14 @@ function serve_file(array $u,string $id): never {
  $m=row('SELECT * FROM media WHERE id=?',[$id]);if(!$m)fail('Archivo no disponible.',404);
  $allowed=$m['owner_id']===$u['id'];
  if(!$allowed) switch($m['purpose']) {
-  case 'profile': $allowed=(bool)row('SELECT id FROM users WHERE avatar_asset=? OR cover_asset=?',[$id,$id]);break;
+  case 'profile': $allowed=(bool)row('SELECT id FROM users WHERE avatar_asset=? OR cover_asset=?',[$id,$id])||(bool)row('SELECT id FROM story_highlights WHERE cover_asset=?',[$id]);break;
   case 'document': $allowed=$u['role']==='admin';break;
   case 'message': $allowed=(bool)row("SELECT id FROM messages WHERE (sender_id=? OR recipient_id=?) AND JSON_SEARCH(media,'one',?,NULL,'$[*].id') IS NOT NULL",[$u['id'],$u['id'],$id]);break;
   case 'post': foreach(query("SELECT * FROM posts WHERE JSON_SEARCH(media,'one',?,NULL,'$[*].id') IS NOT NULL",[$id]) as $p) if(readable($p,$u)) $allowed=true; break;
-  case 'story': foreach(query("SELECT * FROM stories WHERE expires_at>NOW() AND JSON_SEARCH(media,'one',?,NULL,'$[*].id') IS NOT NULL",[$id]) as $s) if(readable($s,$u)&&row('SELECT 1 FROM follows WHERE follower_id=? AND creator_id=?',[$u['id'],$s['creator_id']]))$allowed=true;break;
+  case 'story': foreach(query("SELECT * FROM stories WHERE JSON_SEARCH(media,'one',?,NULL,'$[*].id') IS NOT NULL",[$id]) as $s) if(story_available($s,$u))$allowed=true;break;
  }
- // Even an owner cannot retrieve expired story media or deleted post media through its old URL.
- if($m['purpose']==='story'&&!row("SELECT id FROM stories WHERE expires_at>NOW() AND JSON_SEARCH(media,'one',?,NULL,'$[*].id') IS NOT NULL",[$id]))$allowed=false;
+ // Deleted story and post media cannot be retrieved through old URLs. Owners retain their story archive.
+ if($m['purpose']==='story'&&!row("SELECT id FROM stories WHERE JSON_SEARCH(media,'one',?,NULL,'$[*].id') IS NOT NULL",[$id]))$allowed=false;
  if($m['purpose']==='post'&&!row("SELECT id FROM posts WHERE JSON_SEARCH(media,'one',?,NULL,'$[*].id') IS NOT NULL",[$id]))$allowed=false;
  if(!$allowed)fail('No tienes acceso a este archivo.',403);
  $path=config()['storage'].'/'.$id;if(!is_file($path))fail('Archivo no disponible.',404);

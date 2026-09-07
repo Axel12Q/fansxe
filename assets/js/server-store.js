@@ -35,6 +35,7 @@
         publish: (text, media, visibility) => write('publish', { text, media, visibility }),
         deletePost: id => write('delete-post', { id }), editProfile: (id, fields) => write('profile', { fields }, 'storage'),
         async startConversation(id) { const ok = await write('conversation', { id }); if (ok) snapshot.state.conversations[id] ||= { userId: id, messages: [] }; return ok; },
+        markConversationRead: (id,lastId) => write('message-read',{id,lastId}),
         sendMessage: (id, text, media) => write('message', { id, text, media }),
         markNotificationRead: id => write('read', { id }), markNotificationsRead: () => write('read'),
         recharge: () => { FansxeApp.notify('Los pagos aún no están habilitados. No se ha realizado ningún cargo.'); return false; },
@@ -74,7 +75,9 @@
         setEmail: (email, current) => write('email', { email, current }), changePassword: (current, password, confirm) => write('password', { current, password, confirm }, 'storage'),
         submitAge: document => write('age', { document, adult: true }), reviewAge: (id, decision, note, adult) => write('review', { id, decision, note, adult }),
         stories: () => snapshot.community.stories.filter(visible), story: id => snapshot.community.stories.find(s => s.id === id),
-        canViewStory: s => visible(s) && canRead(s), publishStory: (text, media, visibility) => write('publish-story', { text, media, visibility }),
+        canViewStory: s => !!s && s.available !== false && canRead(s) && (visible(s) || !!s.highlights?.length || s.creatorId === 'demo'), publishStory: (text, media, visibility) => write('publish-story', { text, media, visibility }),
+        highlights: () => snapshot.community.highlights || [],
+        archive: () => snapshot.community.stories.filter(s => s.creatorId === 'demo'),
         deleteStory: id => write('delete-story', { id }),
         markStorySeen: id => write('story-seen', { id }), toggleStoryLike: id => write('story-like', { id }), replyStory: (id, text) => write('story-reply', { id, text })
     };
@@ -85,7 +88,9 @@
         try {
             await queue; const next = await FansxeAPI('state');
             const changed = JSON.stringify(snapshot.state.conversations) !== JSON.stringify(next.state.conversations) || JSON.stringify(snapshot.community.requests) !== JSON.stringify(next.community.requests) || JSON.stringify(snapshot.community.stories) !== JSON.stringify(next.community.stories) || JSON.stringify(snapshot.data.notifications) !== JSON.stringify(next.data.notifications);
-            apply(next); if (changed) window.dispatchEvent(new CustomEvent('fansxe:change', { detail: { action: 'poll' } }));
+            const incoming=Object.values(next.state.conversations).flatMap(c=>c.messages.filter(m=>m.senderId!=='demo'&&!m.read&&!Object.values(snapshot.state.conversations).some(old=>old.messages.some(x=>x.id===m.id))));
+            apply(next); if(incoming.length && !incoming.every(m=>window.FansxeChat?.activeUser===m.senderId && document.body.dataset.page==='mensajes' && !window.FansxeApp?.activeModal)) window.FansxeApp?.notify('Tienes '+incoming.length+' mensaje'+(incoming.length===1?' nuevo':'s nuevos')+' en tus conversaciones.');
+            if (changed) window.dispatchEvent(new CustomEvent('fansxe:change', { detail: { action: 'poll' } }));
         } catch {} finally { polling = false; }
     }, 10000);
 })();

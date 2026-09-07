@@ -13,6 +13,7 @@ try {
  $html=str_replace('<script src="assets/js/auth.js"></script>',$script.'<script src="assets/js/server-auth.js"></script>',$html);
  foreach(['data','store','community-store'] as $file)$html=str_replace('<script src="assets/js/'.$file.'.js" defer></script>','',$html);
  $html=str_replace('<script src="assets/js/media.js" defer></script>','<script src="assets/js/server-store.js" defer></script><script src="assets/js/media.js" defer></script>',$html);
- if(!$public)$html=str_replace('</body>','<script src="assets/js/server-ui.js" defer></script><script src="assets/js/commerce.js" defer></script></body>',$html);
+ if($public)$html=str_replace('</body>','<script type="module" src="assets/js/google-auth.js"></script></body>',$html);
+ if(!$public)$html=str_replace('</body>','<script src="assets/js/server-ui.js" defer></script><script src="assets/js/commerce.js" defer></script><script src="assets/js/highlights.js" defer></script></body>',$html);
  header('Content-Type: text/html; charset=utf-8');echo $html;
 }catch(Throwable $e){error_log('Fansxe page: '.get_class($e));http_response_code(503);echo '<p>Estamos preparando Fansxe. Vuelve a intentarlo en unos minutos.</p>';}
