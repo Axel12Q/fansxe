@@ -217,12 +217,12 @@
             case 'follow': store.toggleFollow(button.dataset.creator); break;
             case 'like': store.toggleLike(id); break;
             case 'comments': expanded.has(id) ? expanded.delete(id) : expanded.add(id); $(`comments-${id}`).hidden = !expanded.has(id); button.setAttribute('aria-expanded', String(expanded.has(id))); break;
-            case 'photo': $('modalImgViewer').src = store.post(id).image; $('modalImgViewer').alt = store.post(id).alt; openModal('imageModal'); break;
+            case 'photo': $('modalImgViewer').src = store.post(id).image; $('modalImgViewer').alt = store.post(id).alt; window.FansxeLoading?.image($('modalImgViewer')); openModal('imageModal'); break;
             case 'asset-photo':
-                try { $('modalImgViewer').src = await media.url(button.dataset.assetId); $('modalImgViewer').alt = 'Archivo adjunto ampliado'; openModal('imageModal'); } catch (error) { notify(error.message); } break;
+                try { $('modalImgViewer').src = await media.url(button.dataset.assetId); $('modalImgViewer').alt = 'Archivo adjunto ampliado'; window.FansxeLoading?.image($('modalImgViewer')); openModal('imageModal'); } catch (error) { notify(error.message); } break;
             case 'profile-photo': {
                 const user = store.user(userId), field = button.dataset.field;
-                try { const source = user[field + 'Asset'] ? await media.url(user[field + 'Asset']) : user[field]; if (source) { $('modalImgViewer').src = source; $('modalImgViewer').alt = 'Foto de ' + user.name; openModal('imageModal'); } } catch (error) { notify(error.message); } break;
+                try { const source = user[field + 'Asset'] ? await media.url(user[field + 'Asset']) : user[field]; if (source) { $('modalImgViewer').src = source; $('modalImgViewer').alt = 'Foto de ' + user.name; window.FansxeLoading?.image($('modalImgViewer')); openModal('imageModal'); } } catch (error) { notify(error.message); } break;
             }
             case 'share-profile':
                 try { await navigator.clipboard.writeText(new URL(window.FansxeBoot && userId === 'demo' ? 'perfil.html?user=' + FansxeBoot.selfId : ui.profileUrl(userId), location.href).href); notify('¡Enlace copiado!'); } catch { notify('No se pudo copiar. Puedes copiar la dirección del navegador.'); } break;

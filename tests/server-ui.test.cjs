@@ -77,3 +77,17 @@ test('highlights can be edited from the profile with archived stories and group 
 test('Plus style fields are scoped to the profile and disabled without Plus',async t=>{
  const c=load(t,'perfil.html');await tick();c.d.querySelector('[data-action="edit-profile"]').click();assert.ok(c.d.querySelector('#profile-accent').disabled);assert.equal(c.d.querySelector('#page-content').dataset.profileAccent,'purple');assert.deepEqual(c.errors,[]);
 });
+
+test('loading feedback stays visible for overlapping requests and clears after failure',async t=>{
+ const c=load(t,'inicio.html');await tick();
+ const pending=[];c.w.fetch=()=>new Promise((resolve,reject)=>pending.push({resolve,reject}));
+ const first=c.w.FansxeAPI('profile',{});const second=c.w.FansxeAPI('upload',{},true).catch(()=>{});
+ await new Promise(r=>setTimeout(r,220));assert.equal(c.d.querySelector('#fansxe-loading').hidden,false);assert.match(c.d.querySelector('#fansxe-loading').textContent,/Subiendo archivo/);
+ pending[0].resolve({ok:true,json:async()=>({ok:true})});await first;assert.equal(c.d.querySelector('#fansxe-loading').hidden,false);
+ pending[1].reject(Error('Network unavailable'));await second;await new Promise(r=>setTimeout(r,150));assert.equal(c.d.querySelector('#fansxe-loading').hidden,true);assert.deepEqual(c.errors,[]);
+});
+test('background message reads do not show loading feedback',async t=>{
+ const c=load(t,'inicio.html');await tick();let resolve;c.w.fetch=()=>new Promise(r=>resolve=r);
+ const request=c.w.FansxeAPI('message-read',{id:'other',lastId:'last'});await new Promise(r=>setTimeout(r,220));assert.ok(!c.d.querySelector('#fansxe-loading')||c.d.querySelector('#fansxe-loading').hidden);
+ resolve({ok:true,json:async()=>({ok:true})});await request;
+});

@@ -44,6 +44,8 @@
     };
     let generation = 0;
     FansxeStore.loadFeed = async (options, append = false) => {
+        const done = window.FansxeLoading?.begin('Cargando publicaciones…') || (() => {});
+        try {
         const request = ++generation;
         feedOptions = { ...options, offset: 0 };
         const params = new URLSearchParams({ action: 'feed', ...options, offset: append ? posts.length : 0 });
@@ -51,6 +53,7 @@
         const result = await response.json(); if (!response.ok) throw Error(result.error);
         if (request !== generation) return;
         posts = append ? [...posts, ...result.posts] : result.posts; snapshot.feed = result;
+        } finally { done(); }
     };
     const catalog = [
         { id: 'first-post', name: 'Primera publicación', description: 'Comparte tu primera publicación.', icon: 'photo', tone: 'purple' },
