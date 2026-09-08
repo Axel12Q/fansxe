@@ -1,6 +1,6 @@
 # Fansxe
 
-**Versión conectada:** el despliegue en IONOS ahora usa PHP 8.4 y MariaDB. Consulta [SERVER.md](SERVER.md) para acceso, credenciales, migraciones, despliegue y límites de esta etapa. La documentación siguiente describe el modo de demostración conservado al servir los HTML sin PHP.
+**Versión conectada:** el despliegue en IONOS usa PHP 8.4, MariaDB y Stripe en modo de prueba. Consulta [SERVER.md](SERVER.md) y [BILLING.md](BILLING.md) para acceso, credenciales, migraciones, despliegue, suscripciones, comisiones y retiros. La demo estática se conserva solo como respaldo visual cuando se abren los HTML sin PHP.
 
 Prototipo de una red social para creadores. HTML, CSS y JavaScript sin framework de aplicación ni paso de compilación. Conserva el diseño de `perfil.html`.
 
@@ -69,7 +69,7 @@ pnpm install
 pnpm test
 ```
 
-## Alcance de esta etapa
+## Alcance de la demo estática
 
 La interfaz de producción sigue siendo HTML/CSS/JS estático; no necesita Node.js ni compilación en el hosting. `jsdom` y `fake-indexeddb` solo se utilizan en las pruebas. Estas comprueban las interacciones sobre documentos simulados y persistencia binaria; no sustituyen la revisión visual ni la reproducción de codecs en navegadores reales.
 
@@ -92,6 +92,12 @@ Los archivos de código usan UTF-8, reforzado por `.editorconfig`; se corrigiero
 ## Hosting existente
 
 `.github/workflows/deploy.yml` ya publica por SFTP al hacer push a `main`. Esta etapa no modifica ese flujo. Al subir el sitio deben incluirse los HTML y toda la carpeta `assets`.
+
+## Estado conectado
+
+La versión PHP conectada ya controla autenticación, API, base de datos, almacenamiento remoto, suscripciones, Plus, contabilidad de creadores y webhooks de Stripe en modo de prueba. Las recargas simuladas de gemas están deshabilitadas en producción. El reinicio de sus saldos antiguos se hizo una sola vez con respaldo privado; no se eliminaron perfiles, publicaciones, mensajes ni verificaciones.
+
+Para habilitar cobros reales todavía se necesita completar la revisión comercial de Stripe y definir políticas de impuestos, reembolsos, disputas y pagos manuales. No se realizan transferencias reales en la configuración actual.
 
 ## Próxima etapa
 
