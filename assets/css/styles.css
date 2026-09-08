@@ -249,6 +249,7 @@ html[data-theme="dark"] .feed-tab:focus-visible { outline: 2px solid #c4b5fd; ou
 .tag-filter { display: flex; justify-content: space-between; padding: .6rem 1.25rem; background: #f5f3ff; color: #6d28d9; overflow-wrap: anywhere; }
 .tag-filter a { flex-shrink: 0; margin-left: 1rem; font-size: .875rem; }
 .text-link { color: #7c3aed; font-size: .875rem; font-weight: 600; }
+.subscription-card{margin-bottom:1rem;padding:1.25rem}
 .text-link:hover { text-decoration: underline; }
 .verified { display: inline-flex; vertical-align: middle; background: var(--color-primary); color: white; border-radius: 50%; padding: .1rem; }
 .verified .icon { width: .85rem; height: .85rem; }

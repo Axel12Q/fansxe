@@ -84,6 +84,7 @@ def purchase(client,kind,creator=None,amount=None):
     data={'kind':kind,'requestKey':'billing-test-'+suffix+'-'+secrets.token_hex(8)}
     if creator:data['id']=creator
     if amount:data['amount']=amount
+    if kind=='gems':data['package']='spark'
     client.post('stripe-checkout',data);check(client.status==200,'server creates '+kind+' checkout '+str(client.data.get('error','')))
     url=client.data['result']['url'];check(url.startswith('https://checkout.stripe.com/'),'hosted Stripe checkout URL')
     customer=stripe('GET','/customers',{'email':client.email})['data'][0]['id']
@@ -109,9 +110,11 @@ try:
     b.post('stripe-checkout',{'id':aid,'kind':'subscription','requestKey':'billing-test-'+suffix});check(b.status==403,'unapproved creator cannot sell')
     doc=a.upload();a.post('age',{'document':doc,'adult':True});check(a.status==200,'age verification unchanged')
     request=a.data['snapshot']['community']['requests'][-1]['id'];admin.post('review',{'id':request,'decision':'approved','note':'Isolated test','adult':True});check(admin.status==200,'admin verifies test creator')
-    a.post('creator-request',{});admin.post('creator-review',{'id':aid,'decision':'approved','note':'Isolated test'});check(admin.status==200,'creator approval still required')
-    a.post('profile',{'fields':{'name':'Billing '+suffix+' 0','handle':f'test_{suffix}_0','subscriptionMxn':19900,'trialDays':3}});check(a.status==200,'creator sets MXN price and trial')
+    a.post('profile',{'fields':{'name':'Billing '+suffix+' 0','handle':f'test_{suffix}_0','subscriptionMxn':19900,'trialDays':3}});check(a.status==200,'age-approved creator sets MXN price before optional creator review')
+    a.post('publish',{'text':'Age-approved private post','media':[],'visibility':'subscribers'});check(a.status==200,'age-approved account publishes private content')
     session,request=purchase(b,'subscription',aid)
+    check(b.status==200,'age-approved creator is subscribable')
+    a.post('creator-request',{});admin.post('creator-review',{'id':aid,'decision':'approved','note':'Isolated test'});check(admin.status==200,'optional creator review remains available')
     b.post('stripe-checkout',request);check(b.status==200 and b.data['result']['url']==session['url'],'checkout retry is idempotent')
     b.post('stripe-sync',{'session':session['id']});check(b.status==200 and not b.data['snapshot']['billing']['subscriptions'],'unpaid checkout return grants no access')
     customer=session['customer'];method=stripe('POST','/payment_methods/pm_card_visa/attach',{'customer':customer})
@@ -142,6 +145,9 @@ try:
     pi=stripe('POST','/payment_intents',{'amount':19900,'currency':'mxn','customer':customer,'payment_method':method['id'],'payment_method_types[]':'card','confirm':'true','metadata[fansxe_order]':plus['client_reference_id']})
     hook('charge.updated',{'id':pi['latest_charge']});b.get('state');check(b.data['billing']['plusOwned'],'one-time payment grants permanent Plus')
     b.post('stripe-checkout',{'kind':'plus','requestKey':'billing-test-'+suffix+'-alreadyplus'});check(b.status==400,'cannot buy owned Plus again')
+    gems,_=purchase(b,'gems')
+    gem_pi=stripe('POST','/payment_intents',{'amount':3900,'currency':'mxn','customer':customer,'payment_method':method['id'],'payment_method_types[]':'card','confirm':'true','metadata[fansxe_order]':gems['client_reference_id']})
+    hook('charge.updated',{'id':gem_pi['latest_charge']});b.get('state');check(int(b.data['billing']['gems'])==100,'Stripe gem recharge credits the selected package')
     sql("query('UPDATE billing_payments SET available_at=? WHERE charge_id=?',[time()-1,'"+sale['charge_id']+"']);")
     a.post('withdrawal',{'amount':10000,'bank':'Test bank','holder':'Isolated test','clabe':'032180000118359719'});check(a.status==200,'earned funds can be reserved for manual withdrawal')
     withdrawal=a.data['snapshot']['billing']['withdrawals'][0]
@@ -172,4 +178,3 @@ finally:
     if server_channel:
         server_channel.send('\x03');server_channel.close()
     ssh.close()
-

@@ -26,6 +26,13 @@ function billing_payment(string $chargeId,array $order,?string $invoice=null): v
   billing_mail($order['creator_id'],'sale:'.$chargeId,'Recibiste un nuevo ingreso',($buyer['name']??'Una persona').' realizó un '.($order['kind']==='subscription'?'pago de suscripción':'apoyo').' por '.billing_money($gross).'. Consulta el detalle y tus ganancias disponibles en tu espacio de creador.','creador.html');
  }
  if($order['kind']==='plus')query("UPDATE users SET plus_owned=EXISTS(SELECT 1 FROM billing_payments p JOIN billing_orders o ON o.id=p.order_id WHERE o.user_id=? AND o.kind='plus' AND p.refunded=0 AND p.disputed=0) WHERE id=?",[$order['user_id'],$order['user_id']]);
+ if($order['kind']==='gems' && $refunded===0 && !$disputed) {
+  query("INSERT IGNORE INTO gem_ledger(id,user_id,amount,kind,request_key) VALUES(?,?,?,'stripe-gems',?)",[uid(),$order['user_id'],(int)$order['gem_amount'],'stripe-'.$order['id']]);
+ }
+ if($order['kind']==='gems' && $refunded>0) {
+  $revoke=(int)floor((int)$order['gem_amount']*$refunded/max(1,$gross));
+  query("INSERT IGNORE INTO gem_ledger(id,user_id,amount,kind,request_key) VALUES(?,?,?,'stripe-gems',?)",[uid(),$order['user_id'],-$revoke,'stripe-refund-'.$order['id'].'-'.$refunded]);
+ }
  if($invoice&&($refunded>0||$disputed)) {
   $sub=row('SELECT * FROM billing_subscriptions WHERE order_id=?',[$order['id']]);
   if($sub){$remote=stripe_api('GET','/subscriptions/'.$sub['stripe_id']);if(stripe_id($remote['latest_invoice']??'')===$invoice){query('UPDATE billing_subscriptions SET access_end=0 WHERE stripe_id=?',[$sub['stripe_id']]);billing_access($order['user_id'],$order['creator_id']);}}

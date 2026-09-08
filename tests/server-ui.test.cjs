@@ -92,7 +92,7 @@ test('background message reads do not show loading feedback',async t=>{
  resolve({ok:true,json:async()=>({ok:true})});await request;
 });
 
-function billingFixture(){const b=fixture();b.billing={test:true,currency:'MXN',commission:15,plusPrice:19900,plusOwned:false,price:9900,trialDays:7,available:0,balance:0,sales:[],totals:{sales:0,gross:0,net:0,commission:0,processing:0},withdrawals:[],subscriptions:[],movements:{},marketingEmail:false};return b;}
+function billingFixture(){const b=fixture();b.billing={test:true,currency:'MXN',commission:15,plusPrice:19900,plusOwned:false,price:9900,trialDays:7,available:0,balance:0,gems:0,gemPackages:[{id:'spark',gems:100,amount:3900,label:'Destello'},{id:'glow',gems:550,amount:9900,label:'Resplandor'},{id:'galaxy',gems:1200,amount:19900,label:'Galaxia'}],sales:[],totals:{sales:0,gross:0,net:0,commission:0,processing:0},withdrawals:[],subscriptions:[],movements:{},marketingEmail:false};return b;}
 test('Stripe Plus checkout clearly states one-time purchase and requires confirmation',async t=>{
  const c=load(t,'gemas.html',billingFixture());await tick();assert.match(c.d.querySelector('#page-content').textContent,/Pago único/);assert.ok(!c.d.querySelector('[data-commerce="recharge"]'));
  c.d.querySelector('[data-billing="plus"]').click();assert.equal(c.w.FansxeApp.activeModal,'billingModal');assert.ok(!c.calls.some(x=>x.url.includes('stripe-checkout')));c.d.querySelector('#billing-confirm').click();await tick();const call=c.calls.find(x=>x.url.includes('stripe-checkout'));assert.equal(JSON.parse(call.options.body).kind,'plus');assert.deepEqual(c.errors,[]);
@@ -103,4 +103,9 @@ test('Stripe subscription list shows trial renewal terms and cancellation confir
 });
 test('Stripe creator price is in MXN and trial controls remain locked without approval',async t=>{
  const c=load(t,'perfil.html',billingFixture());await tick();c.d.querySelector('[data-action="edit-profile"]').click();assert.ok(c.d.querySelector('[name="trialDays"]').disabled);assert.equal(c.d.querySelector('[name="subscriptionMxn"]').value,'99');assert.deepEqual(c.errors,[]);
+});
+test('age-approved creator controls unlock and gem recharge packages return',async t=>{
+ const boot=billingFixture();boot.data.creators.demo.privateAllowed=true;boot.community.requests=[{id:'age1',userId:'demo',status:'approved'}];
+ const profile=load(t,'perfil.html',boot);await tick();profile.d.querySelector('[data-action="edit-profile"]').click();assert.equal(profile.d.querySelector('[name="trialDays"]').disabled,false);assert.equal(profile.d.querySelector('[name="subscriptionMxn"]').disabled,false);
+ const gemas=load(t,'gemas.html',boot);await tick();assert.equal(gemas.d.querySelectorAll('[data-billing="gems"]').length,3);assert.match(gemas.d.querySelector('#page-content').textContent,/Recargar gemas/);assert.deepEqual(profile.errors,[]);assert.deepEqual(gemas.errors,[]);
 });

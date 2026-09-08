@@ -21,7 +21,6 @@ function mutate(string $action,array $d,array $u): mixed {
   $story=$action==='publish-story'; $text=str_value($d,'text',$story?1000:3000); $visibility=$d['visibility']??'public';
   if(!in_array($visibility,['public','subscribers'],true)) fail('Audiencia inválida.');
   if($visibility==='subscribers' && !private_allowed($u['id'])) fail('Verifica tu edad antes de publicar contenido privado.',403);
-  if($visibility==='subscribers' && $u['creator_status']!=='approved')fail('Solicita la aprobación como creador antes de vender contenido.',403);
   $media=claim_media($d['media']??[],$u,$story?'story':'post',$story?1:4); if(!$text&&!$media) fail('Añade texto o un archivo.');
   if($story) query('INSERT INTO stories(id,creator_id,text,media,visibility,expires_at) VALUES(?,?,?,?,?,DATE_ADD(NOW(6),INTERVAL 24 HOUR))',[uid(),$u['id'],$text,json_encode($media),$visibility]);
   else query('INSERT INTO posts(id,creator_id,text,media,visibility) VALUES(?,?,?,?,?)',[uid(),$u['id'],$text,json_encode($media),$visibility]); return true;
@@ -36,13 +35,13 @@ function mutate(string $action,array $d,array $u): mixed {
    if($key==='avatarAsset')$avatar=$value;else $cover=$value;
   }
   if(isset($f['subscriptionMxn'])||isset($f['trialDays'])) {
-   if($u['creator_status']!=='approved'||!private_allowed($u['id']))fail('Necesitas ser creador aprobado.',403);
+   if(!private_allowed($u['id']))fail('Necesitas tener aprobada la verificación de edad.',403);
    $amount=filter_var($f['subscriptionMxn']??$u['subscription_mxn'],FILTER_VALIDATE_INT);$days=filter_var($f['trialDays']??$u['trial_days'],FILTER_VALIDATE_INT);
    if($amount===false||$amount<2000||$amount>1000000||$days===false||!in_array($days,[0,3,7,14,30],true))fail('Revisa el precio y los días de prueba.');
    query('UPDATE users SET subscription_mxn=?,trial_days=? WHERE id=?',[$amount,$days,$u['id']]);
   }
   if(isset($f['subscriptionGems'])) {
-   if($u['creator_status']!=='approved')fail('Solo los creadores aprobados pueden establecer un precio.',403);
+   if(!private_allowed($u['id']))fail('Necesitas tener aprobada la verificación de edad.',403);
    $price=filter_var($f['subscriptionGems'],FILTER_VALIDATE_INT);if($price===false||$price<10||$price>100000)fail('El precio debe estar entre 10 y 100,000 gemas.');
    query('UPDATE users SET subscription_gems=? WHERE id=?',[$price,$u['id']]);
   }

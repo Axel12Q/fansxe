@@ -12,7 +12,7 @@ La aprobación de identidad y de creador se conserva. El contenido ofrecido medi
 
 - `perfil.html`: precio mensual y prueba gratuita en Editar perfil para creadores aprobados.
 - `suscripciones.html`: estado, vencimiento, cancelación/reactivación, portal de recibos y métodos de pago, preferencias de novedades.
-- `gemas.html`: Fansxe Plus, compra única mediante Stripe. En esta etapa las suscripciones y apoyos se pagan directamente en MXN; las antiguas recargas de gemas simuladas están deshabilitadas.
+- `gemas.html`: recargas de 100, 550 o 1.200 gemas mediante Stripe en modo de prueba y Fansxe Plus como compra única. Las gemas se acreditan tras la confirmación del pago y solo sirven dentro de Fansxe; no se pueden retirar.
 - `creador.html`: ingresos brutos/netos, comisiones, disponibilidad y retiros desde $100 MXN de ganancias liberadas.
 - `admin.html`: movimientos y revisión de retiros. Registrar un pago requiere referencia; no hace una transferencia bancaria.
 

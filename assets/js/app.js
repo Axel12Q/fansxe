@@ -299,7 +299,7 @@
         } else if (form.id === 'profile-form') {
             event.preventDefault(); if (saving || profileId !== 'demo') return;
             const fields = Object.fromEntries(['name', 'handle', 'bio', 'location'].map(key => [key, form.elements[key].value]));
-            if(window.FansxeBoot?.billing && store.user('demo').creatorStatus==='approved' && form.elements.subscriptionMxn){fields.subscriptionMxn=Math.round(Number(form.elements.subscriptionMxn.value)*100);fields.trialDays=Number(form.elements.trialDays.value);}
+            if(window.FansxeBoot?.billing && (store.user('demo').creatorStatus==='approved'||store.user('demo').privateAllowed) && form.elements.subscriptionMxn){fields.subscriptionMxn=Math.round(Number(form.elements.subscriptionMxn.value)*100);fields.trialDays=Number(form.elements.trialDays.value);}
             if(window.FansxeBoot && store.user('demo').plus && form.elements.profileAccent){fields.profileAccent=form.elements.profileAccent.value;fields.profileBorder=form.elements.profileBorder.value;}
             if(window.FansxeBoot && !FansxeBoot.billing && store.user('demo').creatorStatus==='approved' && form.elements.subscriptionGems) fields.subscriptionGems=Number(form.elements.subscriptionGems.value);
             await saveForm(form, async () => {

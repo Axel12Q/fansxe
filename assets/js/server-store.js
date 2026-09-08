@@ -26,7 +26,7 @@
     }
     window.FansxeStore = {
         write, get billing(){return snapshot.billing;}, get commerce() { return snapshot.commerce; },
-        get state() { return { ...snapshot.state, gemBalance: snapshot.commerce?.balance || 0, posts }; }, persistent: true,
+        get state() { return { ...snapshot.state, gemBalance: snapshot.billing?.gems || snapshot.commerce?.balance || 0, posts }; }, persistent: true,
         users, user, posts: () => posts, post: id => posts.find(p => p.id === id), canRead, canMessage,
         async discover(offset) { const response=await fetch('/api/index.php?action=discover&offset='+offset);const result=await response.json();if(!response.ok)throw Error(result.error);for(const u of result.users)FansxeData.creators[u.id]||=u;return result; },
         async people(id, list) { const response = await fetch('/api/index.php?' + new URLSearchParams({ action: 'people', user: id, list })); const data = await response.json(); return data.ids || []; },
@@ -72,7 +72,7 @@
         return catalog.filter(b => flags[b.id]);
     };
     window.FansxeCommunity = {
-        get state() { return snapshot.community; }, latest, canPublishPrivate: () => latest()?.status === 'approved' && user('demo')?.creatorStatus === 'approved', badgeCatalog: catalog, earned,
+        get state() { return snapshot.community; }, latest, canPublishPrivate: () => latest()?.status === 'approved' && (!!user('demo')?.privateAllowed || user('demo')?.creatorStatus === 'approved'), badgeCatalog: catalog, earned,
         shownBadges: id => earned(id).filter(b => !user(id)?.hiddenBadges.includes(b.id)),
         setBadge: (id, shown) => write('badge', { id, shown }), setTheme: theme => write('theme', { theme }),
         setEmail: (email, current) => write('email', { email, current }), changePassword: (current, password, confirm) => write('password', { current, password, confirm }, 'storage'),

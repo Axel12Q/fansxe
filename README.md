@@ -95,7 +95,7 @@ Los archivos de código usan UTF-8, reforzado por `.editorconfig`; se corrigiero
 
 ## Estado conectado
 
-La versión PHP conectada ya controla autenticación, API, base de datos, almacenamiento remoto, suscripciones, Plus, contabilidad de creadores y webhooks de Stripe en modo de prueba. Las recargas simuladas de gemas están deshabilitadas en producción. El reinicio de sus saldos antiguos se hizo una sola vez con respaldo privado; no se eliminaron perfiles, publicaciones, mensajes ni verificaciones.
+La versión PHP conectada ya controla autenticación, API, base de datos, almacenamiento remoto, recargas de gemas de prueba, suscripciones, Plus, contabilidad de creadores y webhooks de Stripe. El reinicio de los saldos antiguos se hizo una sola vez con respaldo privado; no se eliminaron perfiles, publicaciones, mensajes ni verificaciones.
 
 Para habilitar cobros reales todavía se necesita completar la revisión comercial de Stripe y definir políticas de impuestos, reembolsos, disputas y pagos manuales. No se realizan transferencias reales en la configuración actual.
 

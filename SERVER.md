@@ -14,7 +14,7 @@ Los visitantes pueden explorar Inicio, perfiles ajenos y archivos de publicacion
 
 ## Pagos con Stripe en modo de prueba
 
-Consulta [BILLING.md](BILLING.md) para suscripciones en MXN, pruebas gratuitas, Plus de pago único, comisiones, retiros manuales, correos y operaciones. Las recargas y compras antiguas con gemas simuladas quedan deshabilitadas al activar Stripe. La verificación de identidad y la aprobación de creador se mantienen.
+Consulta [BILLING.md](BILLING.md) para suscripciones en MXN, recargas de gemas de prueba, Plus de pago único, comisiones, retiros manuales, correos y operaciones. Las recargas se procesan como pagos únicos de Stripe en modo de prueba. La verificación de identidad y la aprobación de creador se mantienen.
 
 ## Historias y experiencia móvil
 
