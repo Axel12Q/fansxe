@@ -12,7 +12,7 @@ function welcome_user(array $u): void {
   if(!config()['mail_enabled']||str_ends_with(strtolower($u['email']),'.invalid'))return;
   $r=row('SELECT * FROM welcome_mail WHERE user_id=?',[$u['id']]);if($r['sent_at']||$r['attempts']>=3)return;
   query('UPDATE welcome_mail SET attempts=attempts+1 WHERE user_id=?',[$u['id']]);
-  $sent=mail($u['email'],'=?UTF-8?B?'.base64_encode('Bienvenido/a a Fansxe ✦ Tu comunidad empieza aquí').'?=',welcome_html($u),['From'=>'Fansxe <'.config()['mail_from'].'>','Reply-To'=>config()['mail_from'],'MIME-Version'=>'1.0','Content-Type'=>'text/html; charset=UTF-8']);
+  $sent=mail($u['email'],'=?UTF-8?B?'.base64_encode('Bienvenido/a a Fansxe ✦ Tu comunidad empieza aquí').'?=',welcome_html($u),['From'=>'Fansxe <'.config()['mail_from'].'>','Reply-To'=>config()['mail_from'],'MIME-Version'=>'1.0','Content-Type'=>'text/html; charset=UTF-8'],'-f'.config()['mail_from']);
   if($sent)query('UPDATE welcome_mail SET sent_at=NOW() WHERE user_id=?',[$u['id']]);else error_log('Fansxe: welcome mail rejected');
  }catch(Throwable $e){error_log('Fansxe: welcome mail pending');}
 }
