@@ -3,7 +3,7 @@ declare(strict_types=1);
 require __DIR__.'/bootstrap.php';require __DIR__.'/state.php';
 try {
  start_session();$page=$_GET['page']??'';
- if(!in_array($page,['inicio','perfil','mensajes','notificaciones','configuracion','admin','login','registro','recuperar','gemas','creador'],true)){http_response_code(404);exit;}
+ if(!in_array($page,['inicio','perfil','mensajes','notificaciones','configuracion','admin','login','registro','recuperar','gemas','creador','suscripciones'],true)){http_response_code(404);exit;}
  $public=in_array($page,['login','registro','recuperar'],true);$u=viewer(false);
  if(!$public&&!$u&&(!in_array($page,['inicio','perfil','gemas'],true)||($page==='perfil'&&(!isset($_GET['user'])||$_GET['user']==='demo')))){header('Location: /login.html?next='.rawurlencode($page.'.html'.(isset($_GET['user'])?'?user='.rawurlencode($_GET['user']):'')));exit;}
  if($page==='admin'&&$u['role']!=='admin'){http_response_code(403);echo '<p>Acceso reservado a administradores. <a href="/inicio.html">Volver a Inicio</a></p>';exit;}
@@ -15,6 +15,7 @@ try {
  foreach(['data','store','community-store'] as $file)$html=str_replace('<script src="assets/js/'.$file.'.js" defer></script>','',$html);
  $html=str_replace('<script src="assets/js/media.js" defer></script>','<script src="assets/js/server-store.js" defer></script><script src="assets/js/media.js" defer></script>',$html);
  if($public)$html=str_replace('</body>','<script type="module" src="assets/js/google-auth.js"></script></body>',$html);
- if(!$public)$html=str_replace('</body>','<script src="assets/js/server-ui.js" defer></script><script src="assets/js/commerce.js" defer></script><script src="assets/js/highlights.js" defer></script></body>',$html);
+ if(!$public)$html=str_replace('</body>','<script src="assets/js/server-ui.js" defer></script><script src="assets/js/commerce.js" defer></script><script src="assets/js/highlights.js" defer></script><script src="assets/js/billing.js" defer></script></body>',$html);
+ $html=preg_replace_callback('#((?:src|href)=")(assets/[^"?]+\.(?:js|css))(\")#',static fn($m)=>$m[1].$m[2].'?v='.filemtime(dirname(__DIR__).'/'.$m[2]).$m[3],$html);
  header('Content-Type: text/html; charset=utf-8');echo $html;
 }catch(Throwable $e){error_log('Fansxe page: '.get_class($e));http_response_code(503);echo '<p>Estamos preparando Fansxe. Vuelve a intentarlo en unos minutos.</p>';}

@@ -51,7 +51,7 @@
         return result;
         } finally { done(); }
     };
-    const destination = () => { const next = new URLSearchParams(location.search).get('next'); return next && /^(inicio|perfil|mensajes|notificaciones|configuracion|admin|gemas|creador)\.html(?:\?[^#]*)?$/.test(next) ? next : 'inicio.html'; };
+    const destination = () => { const next = new URLSearchParams(location.search).get('next'); return next && /^(inicio|perfil|mensajes|notificaciones|configuracion|admin|gemas|creador|suscripciones)\.html(?:\?[^#]*)?$/.test(next) ? next : 'inicio.html'; };
     window.FansxeAuth = {
         session: () => FansxeBoot.session, destination,
         async logout() { try { await FansxeAPI('logout', {}); location.href = 'login.html'; } catch (e) { window.FansxeApp?.notify(e.message); } }

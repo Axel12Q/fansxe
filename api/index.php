@@ -5,6 +5,7 @@ require dirname(__DIR__).'/server/state.php';
 require dirname(__DIR__).'/server/actions.php';
 require dirname(__DIR__).'/server/auth.php';
 require dirname(__DIR__).'/server/files.php';
+require dirname(__DIR__).'/server/billing-events.php';
 try {
  start_session(); $action=$_GET['action']??'';
  if($_SERVER['REQUEST_METHOD']==='GET') {
@@ -21,7 +22,7 @@ try {
    $rows=query($following?'SELECT creator_id id FROM follows WHERE follower_id=?':'SELECT follower_id id FROM follows WHERE creator_id=?',[$person])->fetchAll();
    output(['ids'=>array_map(fn($r)=>client_id($r['id'],$u),$rows)]);
   }
-  if($action==='state')output(snapshot($u,$_GET));
+  if($action==='state'){billing_maintenance($u['role']==='guest'?null:$u);output(snapshot($u,$_GET));}
   fail('Operación desconocida.',404);
  }
  if($_SERVER['REQUEST_METHOD']!=='POST')fail('Método no permitido.',405);
@@ -30,6 +31,7 @@ try {
  $d=json_decode(file_get_contents('php://input'),true,32,JSON_THROW_ON_ERROR); if(!is_array($d))fail('Solicitud inválida.');
  if(in_array($action,['login','register','recovery','reset','google'],true))auth_action($action,$d);
  $u=viewer();if($action==='logout'){forget_login();$_SESSION=[];session_destroy();output(['ok'=>true]);}
+ if(in_array($action,['stripe-checkout','stripe-sync','stripe-cancel','stripe-resume','stripe-portal','withdrawal','withdrawal-review','withdrawal-details','billing-email'],true)){try{$result=billing_action($action,$d,$u);}catch(RuntimeException $e){if(db()->inTransaction())db()->rollBack();fail($e->getMessage(),502);}billing_deliver();output(['result'=>$result,'snapshot'=>snapshot(viewer(),$d['feed']??[])]);}
  limited('write:'.$u['id'],200,60);
  if($action==='remove-file') {
   $m=row('SELECT * FROM media WHERE id=? AND owner_id=? AND purpose=?',[$d['id']??'',$u['id'],'draft']);

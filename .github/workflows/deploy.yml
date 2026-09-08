@@ -21,6 +21,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: php tests/google-token.php .
+      - run: php tests/stripe-signature.php
       - run: find server api -name '*.php' -print0 | xargs -0 -n1 php -l
   deploy:
     if: github.event_name == 'push'

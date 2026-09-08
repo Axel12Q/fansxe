@@ -46,7 +46,7 @@
     $('modals-slot').innerHTML = FansxeDialogs.html;
     $('modals-slot').insertAdjacentHTML('beforeend', `<div id="deletePostModal" class="app-modal hidden"><div class="modal-backdrop" data-action="close-modal"></div><section id="deletePostModalContent" class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="delete-title" tabindex="-1"><h2 id="delete-title" class="text-xl font-bold">¿Eliminar publicación?</h2><p class="my-4">Se eliminarán la publicación, sus comentarios y reacciones de esta demo. No puedes deshacerlo.</p><div class="form-footer"><button class="button-secondary" data-action="close-modal">Cancelar</button><button class="button-primary" data-action="confirm-delete">Eliminar publicación</button></div></section></div>`);
     const main = document.querySelector('main');
-    const titles = { inicio: 'Inicio', perfil: profileId === 'demo' ? 'Mi perfil' : 'Perfil', mensajes: 'Mensajes', notificaciones: 'Notificaciones', configuracion: 'Configuración', admin: 'Administración', gemas: 'Gemas y Plus', creador: 'Mi espacio de creador' };
+    const titles = { inicio: 'Inicio', perfil: profileId === 'demo' ? 'Mi perfil' : 'Perfil', mensajes: 'Mensajes', notificaciones: 'Notificaciones', configuracion: 'Configuración', admin: 'Administración', gemas: 'Gemas y Plus', creador: 'Mi espacio de creador', suscripciones:'Mis suscripciones' };
     main.innerHTML = `<header class="glass-header page-heading"><h1 id="page-title" tabindex="-1">${titles[page]}</h1><a id="account-link" href="${ui.profileUrl('demo')}" aria-label="Mi perfil">${ui.avatar(store.user('demo'))}</a></header><p class="demo-banner">Demo local · Publicaciones y archivos en este navegador · Sin cobros reales</p><div id="page-content"></div>`;
     document.querySelectorAll('#sidebar-slot a, #mobile-slot a').forEach(link => {
         const text = link.textContent.trim();
@@ -299,8 +299,9 @@
         } else if (form.id === 'profile-form') {
             event.preventDefault(); if (saving || profileId !== 'demo') return;
             const fields = Object.fromEntries(['name', 'handle', 'bio', 'location'].map(key => [key, form.elements[key].value]));
+            if(window.FansxeBoot?.billing && store.user('demo').creatorStatus==='approved' && form.elements.subscriptionMxn){fields.subscriptionMxn=Math.round(Number(form.elements.subscriptionMxn.value)*100);fields.trialDays=Number(form.elements.trialDays.value);}
             if(window.FansxeBoot && store.user('demo').plus && form.elements.profileAccent){fields.profileAccent=form.elements.profileAccent.value;fields.profileBorder=form.elements.profileBorder.value;}
-            if(window.FansxeBoot && store.user('demo').creatorStatus==='approved' && form.elements.subscriptionGems) fields.subscriptionGems=Number(form.elements.subscriptionGems.value);
+            if(window.FansxeBoot && !FansxeBoot.billing && store.user('demo').creatorStatus==='approved' && form.elements.subscriptionGems) fields.subscriptionGems=Number(form.elements.subscriptionGems.value);
             await saveForm(form, async () => {
                 const files = [];
                 try {

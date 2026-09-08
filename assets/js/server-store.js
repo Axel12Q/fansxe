@@ -1,7 +1,7 @@
 (() => {
     let snapshot = FansxeBoot, posts = snapshot.feed.posts;
     let feedOptions = { profile: document.body.dataset.page === 'perfil' ? new URLSearchParams(location.search).get('user') || 'demo' : '' };
-    const apply = next => { snapshot = next; FansxeData = next.data; FansxeBoot.session = next.session; };
+    const apply = next => { snapshot = next; FansxeData = next.data; FansxeBoot.session = next.session;FansxeBoot.billing=next.billing; };
     window.FansxeData = snapshot.data;
     const users = () => Object.values(FansxeData.creators), user = id => FansxeData.creators[id];
     const canRead = p => !!p && (p.creatorId === 'demo' || p.visibility === 'public' || !!snapshot.state.subscriptions[p.creatorId]);
@@ -25,7 +25,7 @@
         const next = queue.then(work, work); queue = next.catch(() => {}); return next;
     }
     window.FansxeStore = {
-        write, get commerce() { return snapshot.commerce; },
+        write, get billing(){return snapshot.billing;}, get commerce() { return snapshot.commerce; },
         get state() { return { ...snapshot.state, gemBalance: snapshot.commerce?.balance || 0, posts }; }, persistent: true,
         users, user, posts: () => posts, post: id => posts.find(p => p.id === id), canRead, canMessage,
         async discover(offset) { const response=await fetch('/api/index.php?action=discover&offset='+offset);const result=await response.json();if(!response.ok)throw Error(result.error);for(const u of result.users)FansxeData.creators[u.id]||=u;return result; },

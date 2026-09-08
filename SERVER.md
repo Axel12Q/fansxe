@@ -8,19 +8,13 @@ Registro con declaración de mayoría de edad, sesiones PHP, contraseñas Argon2
 
 El feed consulta bloques de seis registros desde la base, incluidos búsqueda y filtros. Los chats consultan actividad cada diez segundos mientras la pestaña está visible. La primera versión aún recupera el directorio de usuarios y el historial de conversaciones completo: deberán paginarse antes de escalar a una comunidad grande. Los comentarios mostrados por publicación están limitados a 200 y las notificaciones a 100.
 
-Google no está habilitado: la integración Firebase se realizará por separado. No existe un acceso `admin/admin` en producción. Registro solicita un username único de 3–20 caracteres ASCII (letras, números, guion bajo), además del nombre. Se admite login por correo, username o @username; las contraseñas requieren al menos 8 caracteres.
+Google está integrado mediante Firebase; los detalles aparecen al final de este documento. No existe un acceso `admin/admin` en producción. Registro solicita un username único de 3–20 caracteres ASCII (letras, números, guion bajo), además del nombre. Se admite login por correo, username o @username; las contraseñas requieren al menos 8 caracteres.
 
 Los visitantes pueden explorar Inicio, perfiles ajenos y archivos de publicaciones públicas; las acciones de escritura y las páginas privadas exigen sesión. La sesión se recuerda durante 30 días con cookies Secure/HttpOnly/SameSite y tokens aleatorios guardados como hash en MariaDB. Puede restaurarse aunque PHP haya limpiado su sesión temporal. Logout revoca el token del dispositivo; cambiar o recuperar la contraseña revoca los anteriores.
 
-## Gemas y creadores: simulación comercial
+## Pagos con Stripe en modo de prueba
 
-`gemas.html` ofrece recargas simuladas (100, 550 y 1,200 gemas), con confirmación y precios de referencia en USD. No solicita tarjeta ni ejecuta cobros. Las gemas no tienen valor monetario y no se pueden canjear por dinero. Los endpoints antiguos de recarga en centavos permanecen deshabilitados; la nueva contabilidad se separa en `gem_ledger`.
-
-`creador.html` permite solicitar la aprobación como creador después de verificar la edad. Son dos decisiones distintas. Por defecto nadie vende contenido. Un administrador revisa las solicitudes en `admin.html`; solo un creador aprobado puede configurar el precio mensual, publicar contenido privado y recibir suscripciones o apoyos. Los perfiles que no venden no muestran el botón de suscripción.
-
-Las suscripciones simuladas descuentan gemas y habilitan el contenido durante 30 días. Cada venta registra precio bruto, comisión y neto, bajo transacción. La comisión provisional es 5%, configurable mediante `commission_percent`; se redondea hacia arriba a una gema. Los checkouts tienen claves de idempotencia para evitar cobros duplicados. El espacio del creador muestra ventas y saldo disponible, permite solicitar retiros de prueba desde 100 gemas y reserva ese importe. Administración puede rechazar o marcar la simulación completada; ninguna acción transfiere dinero. No se solicitan cuentas bancarias.
-
-Plus cuesta 200 gemas de prueba por 30 días y añade una insignia al perfil. No incluye suscripciones a creadores. Migración `002_social_commerce.sql` incorpora estas tablas y columnas sin renombrar ni borrar las cuentas existentes.
+Consulta [BILLING.md](BILLING.md) para suscripciones en MXN, pruebas gratuitas, Plus de pago único, comisiones, retiros manuales, correos y operaciones. Las recargas y compras antiguas con gemas simuladas quedan deshabilitadas al activar Stripe. La verificación de identidad y la aprobación de creador se mantienen.
 
 ## Historias y experiencia móvil
 
@@ -69,7 +63,7 @@ La primera instrucción prepara la versión y migra; la segunda activa el identi
 
 Las decisiones de autorización se hacen en PHP, incluidas las descargas. Los documentos solo se entregan al propietario o a administradores; los adjuntos de mensajes solo a participantes, incluso si otro usuario tiene rol administrador. Las historias caducadas y las publicaciones eliminadas dejan de servir sus archivos. Los archivos huérfanos y los documentos conservan sus registros físicos: falta definir y automatizar la política de retención y eliminación definitiva. La revisión de edad es manual, no un proveedor externo de validación de identidad.
 
-Hay límites de intentos de acceso y de escrituras, un máximo de 1 GB de archivos por usuario, consultas parametrizadas, CSRF y cookies de sesión HttpOnly/Secure/SameSite. Antes de abrir una operación comercial faltan pagos, OAuth, moderación/denuncias, política de retención, observabilidad y respaldo periódico de base y archivos.
+Hay límites de intentos de acceso y de escrituras, un máximo de 1 GB de archivos por usuario, consultas parametrizadas, CSRF y cookies de sesión HttpOnly/Secure/SameSite. Antes de abrir una operación con dinero real faltan la habilitación comercial de Stripe, moderación/denuncias, política de retención, observabilidad y respaldo periódico de base y archivos.
 
 
 ## Mensajes, destacadas y acceso con Google
@@ -82,4 +76,4 @@ Google utiliza el proyecto fansxe-44e1f y Firebase JS 12.18.0. PHP valida firma 
 
 El alta por contraseña y por Google envía un correo HTML de bienvenida desde soporte mediante el transporte de correo del hosting. welcome_mail registra aceptación del transporte, no lectura ni entrega definitiva. Un fallo de correo no impide crear la cuenta. Las cuentas .invalid de las pruebas no reciben correo. Se confirmó entrega a la bandeja de soporte de una muestra de la plantilla.
 
-Plus activa cuatro colores y tres bordes limitados al perfil. Mayor visibilidad y promoción están identificadas como próximas funciones, sin alterar por ahora el orden del feed. Compras y retiros continúan siendo simulados.
+Plus activa cuatro colores y tres bordes limitados al perfil. Mayor visibilidad y promoción están identificadas como próximas funciones, sin alterar por ahora el orden del feed. Las compras usan Stripe en modo de prueba y los retiros se registran manualmente, sin transferencia de dinero real.

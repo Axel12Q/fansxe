@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/commerce.php';
+require_once __DIR__.'/billing.php';
 require_once __DIR__.'/social.php';
 function feed(array $u,array $options=[]): array {
  $where=[]; $args=[]; $profile=real_id((string)($options['profile']??''),$u); $filter=$options['filter']??'todo';
@@ -34,7 +35,7 @@ function snapshot(array $u,array $options=[]): array {
  $followers=array_map(fn($r)=>client_id($r['follower_id'],$u),query('SELECT follower_id FROM follows WHERE creator_id=?',[$u['id']])->fetchAll());
  $users=[];
  foreach(query('SELECT u.*, (SELECT COUNT(*) FROM follows f WHERE f.creator_id=u.id) followers, (SELECT COUNT(*) FROM posts p WHERE p.creator_id=u.id) post_count, EXISTS(SELECT 1 FROM posts p WHERE p.creator_id=u.id) first_post, EXISTS(SELECT 1 FROM stories s WHERE s.creator_id=u.id) first_story FROM users u ORDER BY created_at DESC') as $r) {
-  $id=client_id($r['id'],$u); $users[$id]=['id'=>$id,'name'=>$r['name'],'handle'=>$r['handle'],'bio'=>$r['bio'],'location'=>$r['location'],'avatarAsset'=>$r['avatar_asset'],'coverAsset'=>$r['cover_asset'],'followers'=>(int)$r['followers']-(!empty($following[$id])?1:0),'creatorStatus'=>$r['creator_status'],'subscriptionGems'=>(int)$r['subscription_gems'],'plus'=>($r['plus_expires_at']&&strtotime($r['plus_expires_at'])>time()),'profileAccent'=>$r['profile_accent'],'profileBorder'=>$r['profile_border'],'subscriptionCents'=>499,'verified'=>false,'hiddenBadges'=>json_value($r['hidden_badges']),'postCount'=>(int)$r['post_count'],'firstPost'=>(bool)$r['first_post'],'firstStory'=>(bool)$r['first_story']];
+  $id=client_id($r['id'],$u); $users[$id]=['id'=>$id,'name'=>$r['name'],'handle'=>$r['handle'],'bio'=>$r['bio'],'location'=>$r['location'],'avatarAsset'=>$r['avatar_asset'],'coverAsset'=>$r['cover_asset'],'followers'=>(int)$r['followers']-(!empty($following[$id])?1:0),'creatorStatus'=>$r['creator_status'],'subscriptionGems'=>(int)$r['subscription_gems'],'subscriptionMxn'=>(int)$r['subscription_mxn'],'trialDays'=>(int)$r['trial_days'],'plus'=>((bool)$r['plus_owned']||($r['plus_expires_at']&&strtotime($r['plus_expires_at'])>time())),'profileAccent'=>$r['profile_accent'],'profileBorder'=>$r['profile_border'],'subscriptionCents'=>499,'verified'=>false,'hiddenBadges'=>json_value($r['hidden_badges']),'postCount'=>(int)$r['post_count'],'firstPost'=>(bool)$r['first_post'],'firstStory'=>(bool)$r['first_story']];
  }
  $likes=[]; foreach(query('SELECT post_id FROM post_likes WHERE user_id=?',[$u['id']]) as $r) $likes[$r['post_id']]=true;
  $subscriptions=[]; foreach(query('SELECT creator_id FROM subscriptions WHERE user_id=? AND expires_at>NOW()',[$u['id']]) as $r) $subscriptions[client_id($r['creator_id'],$u)]=true;
@@ -67,7 +68,7 @@ function snapshot(array $u,array $options=[]): array {
   }
  } unset($story);
  if($u['role']==='guest')$users['demo']=['id'=>'demo','name'=>'Visitante','handle'=>'','bio'=>'','followers'=>0,'hiddenBadges'=>[],'creatorStatus'=>'none'];
- return ['guest'=>$u['role']==='guest','commerce'=>commerce_state($u),'selfId'=>$u['id'],'session'=>$u['role']==='guest'?null:['email'=>$u['email'],'name'=>$u['name'],'role'=>$u['role']], 'csrf'=>$_SESSION['csrf'], 'data'=>['viewer'=>['id'=>'demo','name'=>$u['name']],'creators'=>(object)$users,'followers'=>$followers,'notifications'=>$notifications,'posts'=>[]],
+ return ['guest'=>$u['role']==='guest','billing'=>billing_enabled()?billing_state($u):null,'commerce'=>commerce_state($u),'selfId'=>$u['id'],'session'=>$u['role']==='guest'?null:['email'=>$u['email'],'name'=>$u['name'],'role'=>$u['role']], 'csrf'=>$_SESSION['csrf'], 'data'=>['viewer'=>['id'=>'demo','name'=>$u['name']],'creators'=>(object)$users,'followers'=>$followers,'notifications'=>$notifications,'posts'=>[]],
  'state'=>['balanceCents'=>(int)query('SELECT COALESCE(SUM(amount_cents),0) FROM wallet_ledger WHERE user_id=?',[$u['id']])->fetchColumn(),'profile'=>[],'likes'=>(object)$likes,'following'=>(object)$following,'subscriptions'=>(object)$subscriptions,'comments'=>(object)[],'conversations'=>(object)$conversations,'readNotifications'=>(object)$read],
  'community'=>['email'=>$u['email'],'theme'=>$u['theme'],'password'=>true,'hiddenBadges'=>json_value($u['hidden_badges']),'requests'=>$requests,'stories'=>$stories,'highlights'=>$highlights,'storyLikes'=>(object)$storyLikes,'storySeen'=>(object)$storySeen], 'feed'=>feed($u,$options)];
 }

@@ -1,5 +1,5 @@
 (() => {
-    if (!window.FansxeBoot || !window.FansxeApp) return;
+    if (!window.FansxeBoot || !window.FansxeApp || window.FansxeBoot.billing) return;
     const app=FansxeApp, store=FansxeStore, ui=FansxeComponents, $=id=>document.getElementById(id), e=ui.escape, n=ui.number, page=document.body.dataset.page;
     let checkout=null, busy=false;
     const gem=ui.icon('gem');
@@ -39,7 +39,8 @@
     window.addEventListener('fansxe:change',profileStyle);profileStyle();
     document.addEventListener('click',async event=>{
         const button=event.target.closest('[data-commerce],[data-action]');if(!button)return;
-        if(button.dataset.action==='edit-profile'){priceField();styleFields();return;}
+        if(button.dataset.action==='edit-profile'){if(!FansxeBoot.billing)priceField();styleFields();return;}
+        if(FansxeBoot.billing)return;
         if(['subscribe','tip','recharge'].includes(button.dataset.action)) {
             event.preventDefault();event.stopImmediatePropagation();if(!FansxeAuth.session())return window.FansxeRequireAccount?.();
             if(button.dataset.action==='recharge'){location.href='gemas.html';return;}
@@ -62,7 +63,7 @@
             if(ok)render();
         }finally{busy=false;button.disabled=false;}
     },true);
-    document.addEventListener('submit',async event=>{if(event.target.id!=='payout-form')return;event.preventDefault();if(busy)return;const amount=Number(event.target.elements.gems.value);busy=true;try{if(await store.write('payout',{gems:amount})){app.notify('Retiro de prueba solicitado.');render();}}finally{busy=false;}});
-    function render(){document.querySelectorAll('.balance-display').forEach(el=>{el.innerHTML=`${gem} ${n(c().balance)} gemas`;});gemsPage();creatorPage();adminPanel();}
+    document.addEventListener('submit',async event=>{if(FansxeBoot.billing||event.target.id!=='payout-form')return;event.preventDefault();if(busy)return;const amount=Number(event.target.elements.gems.value);busy=true;try{if(await store.write('payout',{gems:amount})){app.notify('Retiro de prueba solicitado.');render();}}finally{busy=false;}});
+    function render(){if(FansxeBoot.billing)return;document.querySelectorAll('.balance-display').forEach(el=>{el.innerHTML=`${gem} ${n(c().balance)} gemas`;});gemsPage();creatorPage();adminPanel();}
     render();window.addEventListener('fansxe:change',render);
 })();

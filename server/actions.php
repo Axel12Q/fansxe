@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 function mutate(string $action,array $d,array $u): mixed {
+ if(billing_enabled()&&in_array($action,['demo-recharge','gem-purchase','payout','payout-review'],true))fail('Esta operación de simulación fue sustituida por Stripe.',409);
  if(in_array($action,['demo-recharge','gem-purchase','creator-request','creator-review','payout','payout-review'],true))return commerce_action($action,$d,$u);
  if(in_array($action,['message-read','highlight-save','highlight-delete'],true))return social_action($action,$d,$u);
  $id=real_id((string)($d['id']??''),$u);
@@ -34,13 +35,19 @@ function mutate(string $action,array $d,array $u): mixed {
    if($value!==null && $value!==$old) claim_media([['id'=>$value]],$u,'profile',1);
    if($key==='avatarAsset')$avatar=$value;else $cover=$value;
   }
+  if(isset($f['subscriptionMxn'])||isset($f['trialDays'])) {
+   if($u['creator_status']!=='approved'||!private_allowed($u['id']))fail('Necesitas ser creador aprobado.',403);
+   $amount=filter_var($f['subscriptionMxn']??$u['subscription_mxn'],FILTER_VALIDATE_INT);$days=filter_var($f['trialDays']??$u['trial_days'],FILTER_VALIDATE_INT);
+   if($amount===false||$amount<2000||$amount>1000000||$days===false||!in_array($days,[0,3,7,14,30],true))fail('Revisa el precio y los días de prueba.');
+   query('UPDATE users SET subscription_mxn=?,trial_days=? WHERE id=?',[$amount,$days,$u['id']]);
+  }
   if(isset($f['subscriptionGems'])) {
    if($u['creator_status']!=='approved')fail('Solo los creadores aprobados pueden establecer un precio.',403);
    $price=filter_var($f['subscriptionGems'],FILTER_VALIDATE_INT);if($price===false||$price<10||$price>100000)fail('El precio debe estar entre 10 y 100,000 gemas.');
    query('UPDATE users SET subscription_gems=? WHERE id=?',[$price,$u['id']]);
   }
   if(isset($f['profileAccent'])||isset($f['profileBorder'])) {
-   if(!$u['plus_expires_at']||strtotime($u['plus_expires_at'])<=time())fail('La personalización del perfil requiere Plus activo.',403);
+   if(!$u['plus_owned']&&(!$u['plus_expires_at']||strtotime($u['plus_expires_at'])<=time()))fail('La personalización del perfil requiere Plus activo.',403);
    $accent=$f['profileAccent']??$u['profile_accent'];$border=$f['profileBorder']??$u['profile_border'];
    if(!in_array($accent,['purple','rose','ocean','amber'],true)||!in_array($border,['soft','double','glow'],true))fail('Estilo no disponible.');
    query('UPDATE users SET profile_accent=?,profile_border=? WHERE id=?',[$accent,$border,$u['id']]);

@@ -16,7 +16,7 @@ function load(t, file, boot = fixture()) {
     let html = fs.readFileSync(path.join(root, file), 'utf8').replace('assets/js/auth.js','assets/js/server-auth.js');
     for (const name of ['data','store','community-store']) html = html.replace(`<script src="assets/js/${name}.js" defer></script>`, '');
     html = html.replace('<script src="assets/js/media.js" defer></script>', '<script src="assets/js/server-store.js" defer></script><script src="assets/js/media.js" defer></script>');
-    html = html.replace('</body>', '<script src="assets/js/server-ui.js" defer></script><script src="assets/js/commerce.js" defer></script><script src="assets/js/highlights.js" defer></script></body>');
+    html = html.replace('</body>', '<script src="assets/js/server-ui.js" defer></script><script src="assets/js/commerce.js" defer></script><script src="assets/js/highlights.js" defer></script><script src="assets/js/billing.js" defer></script></body>');
     const errors = [], calls = [], vc = new VirtualConsole(); vc.on('jsdomError', e => errors.push(e.message));
     const dom = new JSDOM(html, { url: 'https://fansxe.com/'+file, runScripts: 'outside-only', virtualConsole: vc });
     t.after(() => dom.window.close());const w=dom.window;w.FansxeBoot=boot;w.tailwind={};w.scrollTo=()=>{};
@@ -90,4 +90,17 @@ test('background message reads do not show loading feedback',async t=>{
  const c=load(t,'inicio.html');await tick();let resolve;c.w.fetch=()=>new Promise(r=>resolve=r);
  const request=c.w.FansxeAPI('message-read',{id:'other',lastId:'last'});await new Promise(r=>setTimeout(r,220));assert.ok(!c.d.querySelector('#fansxe-loading')||c.d.querySelector('#fansxe-loading').hidden);
  resolve({ok:true,json:async()=>({ok:true})});await request;
+});
+
+function billingFixture(){const b=fixture();b.billing={test:true,currency:'MXN',commission:15,plusPrice:19900,plusOwned:false,price:9900,trialDays:7,available:0,balance:0,sales:[],totals:{sales:0,gross:0,net:0,commission:0,processing:0},withdrawals:[],subscriptions:[],movements:{},marketingEmail:false};return b;}
+test('Stripe Plus checkout clearly states one-time purchase and requires confirmation',async t=>{
+ const c=load(t,'gemas.html',billingFixture());await tick();assert.match(c.d.querySelector('#page-content').textContent,/Pago único/);assert.ok(!c.d.querySelector('[data-commerce="recharge"]'));
+ c.d.querySelector('[data-billing="plus"]').click();assert.equal(c.w.FansxeApp.activeModal,'billingModal');assert.ok(!c.calls.some(x=>x.url.includes('stripe-checkout')));c.d.querySelector('#billing-confirm').click();await tick();const call=c.calls.find(x=>x.url.includes('stripe-checkout'));assert.equal(JSON.parse(call.options.body).kind,'plus');assert.deepEqual(c.errors,[]);
+});
+test('Stripe subscription list shows trial renewal terms and cancellation confirmation',async t=>{
+ const boot=billingFixture();boot.billing.subscriptions=[{stripe_id:'sub_test',creator_id:'demo',status:'trialing',amount:9900,period_end:1900000000,cancel_at_end:false}];
+ const c=load(t,'suscripciones.html',boot);await tick();assert.match(c.d.querySelector('#page-content').textContent,/Después de la prueba/);c.d.querySelector('[data-billing="cancel"]').click();assert.match(c.d.querySelector('#billing-body').textContent,/Conservarás tu acceso/);assert.ok(!c.calls.some(x=>x.url.includes('stripe-cancel')));assert.deepEqual(c.errors,[]);
+});
+test('Stripe creator price is in MXN and trial controls remain locked without approval',async t=>{
+ const c=load(t,'perfil.html',billingFixture());await tick();c.d.querySelector('[data-action="edit-profile"]').click();assert.ok(c.d.querySelector('[name="trialDays"]').disabled);assert.equal(c.d.querySelector('[name="subscriptionMxn"]').value,'99');assert.deepEqual(c.errors,[]);
 });
