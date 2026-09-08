@@ -114,3 +114,15 @@ test('private post state distinguishes unavailable subscriptions from a subscrib
  const unavailable=load(t,'inicio.html',makeBoot(false));await tick();const unavailableCard=unavailable.d.querySelector('.post-card');assert.match(unavailableCard.querySelector('.locked-media').textContent,/Contenido privado/);assert.match(unavailableCard.querySelector('.locked-media').textContent,/Suscríbete para poder verlo/);assert.equal(unavailableCard.querySelector('[data-action="subscribe"]'),null);
  const available=load(t,'inicio.html',makeBoot(true));await tick();const availableCard=available.d.querySelector('.post-card');assert.ok(availableCard.querySelector('[data-action="subscribe"]'));assert.match(availableCard.querySelector('[data-action="subscribe"]').textContent,/Suscríbete a Other creator/);assert.deepEqual(unavailable.errors,[]);assert.deepEqual(available.errors,[]);
 });
+
+test('Stripe creator navigation, subscribers and withdrawal review are reachable',async t=>{
+ const boot=billingFixture();boot.data.creators.demo.privateAllowed=true;boot.billing.audience={total:1,active:1,trials:0,renewing:1};boot.billing.subscribers=[{user_id:'other',name:'Suscriptor',handle:'fan',status:'active',amount:9900,period_end:1900000000}];
+ const c=load(t,'creador.html',boot);await tick();assert.equal(c.d.querySelectorAll('a[href="creador.html"].commerce-nav').length,2);assert.match(c.d.querySelector('#page-content').textContent,/Tus suscriptores/);assert.match(c.d.querySelector('#page-content').textContent,/Suscriptor/);assert.ok(c.d.querySelector('#billing-withdrawal'));
+ boot.billing.withdrawals=[{id:'withdraw1',user_id:boot.selfId,amount:15000,bank_name:'Banco',status:'pending'}];const admin=load(t,'admin.html',boot);await tick();assert.ok(admin.d.querySelector('[data-billing="review-withdrawal"]'));assert.match(admin.d.querySelector('#billing-admin').textContent,/Movimientos de Stripe/);assert.deepEqual(c.errors,[]);assert.deepEqual(admin.errors,[]);
+});
+test('unread message badges appear on desktop and the mobile button and clear after reading',async t=>{
+ const boot=billingFixture();boot.state.conversations.other={unreadCount:2,messages:[]};const c=load(t,'inicio.html',boot);await tick();const mobile=c.d.querySelector('button[aria-label="Mensajes"] .nav-message-count');assert.ok(mobile);assert.equal(mobile.textContent,'+2');assert.equal(mobile.hidden,false);boot.state.conversations.other.unreadCount=0;c.w.dispatchEvent(new c.w.CustomEvent('fansxe:change'));assert.equal(mobile.hidden,true);await tick();assert.deepEqual(c.errors,[]);
+});
+test('activity email preference is persisted through the authenticated API',async t=>{
+ const c=load(t,'configuracion.html',billingFixture());await tick();const checkbox=c.d.querySelector('#activity-email');checkbox.checked=false;checkbox.dispatchEvent(new c.w.Event('change'));await tick();const call=c.calls.find(x=>x.url.includes('action=activity-email'));assert.equal(JSON.parse(call.options.body).enabled,false);assert.deepEqual(c.errors,[]);
+});

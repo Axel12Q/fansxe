@@ -24,6 +24,7 @@
         else hideOverlay(activeModal);
         if (activeModal === 'confirmRechargeModal' && id !== 'successRechargeModal') pendingRecharge = null;
         activeModal = id; $(id).classList.remove('hidden');
+        window.dispatchEvent(new CustomEvent('fansxe:modal-opened',{detail:id}));
         const content = $(id + 'Content');
         content?.classList.remove('translate-x-full');
         document.body.style.overflow = 'hidden';

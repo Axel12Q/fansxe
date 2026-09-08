@@ -1,6 +1,14 @@
 <?php
 declare(strict_types=1);
 const FIREBASE_PROJECT='fansxe-44e1f';
+function google_link_valid(array $proof,string $user,string $sub,string $code): bool {
+ return preg_match('/^[0-9]{6}$/D',$code)===1&&($proof['user']??'')===$user&&($proof['sub']??'')===$sub&&($proof['expires']??0)>time()&&hash_equals($proof['hash']??'',hash('sha256',$code));
+}
+function google_link_html(string $name,string $code): string {
+ $name=htmlspecialchars($name,ENT_QUOTES,'UTF-8');
+ $code=htmlspecialchars($code,ENT_QUOTES,'UTF-8');
+ return '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><body style="margin:0;background:#f5f3ff;color:#30233e;font-family:Arial,sans-serif"><table role="presentation" width="100%"><tr><td align="center" style="padding:32px 16px"><table role="presentation" style="width:100%;max-width:560px;background:white;border-radius:24px;overflow:hidden" cellspacing="0"><tr><td style="padding:32px;background:#6d28d9;color:white"><strong style="font-size:28px">fansxe ✦</strong><h1 style="font-size:28px">Tu cuenta, ahora con Google.</h1></td></tr><tr><td style="padding:32px"><p>Hola, '.$name.'.</p><p style="line-height:1.7;color:#665e77">Usa este código en la ventana de Fansxe para vincular Google a tu cuenta existente. Tu perfil y tus publicaciones seguirán contigo.</p><p style="background:#f5f3ff;padding:24px;text-align:center;border-radius:16px;font-size:32px;letter-spacing:8px;color:#7c3aed;font-weight:bold">'.$code.'</p><p style="font-size:14px;line-height:1.7">Vence en 10 minutos. No compartas el código. Si no solicitaste este acceso, ignora el mensaje: tu cuenta no se vinculará.</p><p style="font-size:13px;color:#756c89">¿Necesitas ayuda? Responde a soporte@fansxe.com.</p></td></tr></table></td></tr></table></body></html>';
+}
 function google_claims(string $token,array $keys): array {
  $parts=explode('.',$token);
  if(count($parts)!==3||strlen($token)>16000)throw new RuntimeException('Invalid token');
@@ -34,11 +42,22 @@ function google_action(array $d): never {
  $email=strtolower($c['email']);$existing=row('SELECT * FROM users WHERE email=?',[$email]);
  if($existing) {
   // Matching email alone never links Google to an existing local account.
-  if(empty($d['current']))output(['needsLink'=>true]);
+  if(!empty($d['sendLinkCode'])) {
+   limited('google-link-mail:'.$existing['id'],3,3600);
+   $code=(string)random_int(100000,999999);
+   $_SESSION['google_link']=['user'=>$existing['id'],'sub'=>$c['sub'],'hash'=>hash('sha256',$code),'expires'=>time()+600];
+   $html=google_link_html($existing['name'],$code);
+   if(!config()['mail_enabled']||!mail($existing['email'],'Confirma tu acceso a Fansxe',$html,['From'=>'Fansxe <'.config()['mail_from'].'>','MIME-Version'=>'1.0','Content-Type'=>'text/html; charset=UTF-8'],'-f'.config()['mail_from']))fail('No pudimos enviar el código. Intenta más tarde o usa tu contraseña.',503);
+   output(['needsLink'=>true,'codeSent'=>true]);
+  }
+  if(empty($d['current'])&&empty($d['linkCode']))output(['needsLink'=>true]);
   limited('google-link:'.$existing['id'],8);
-  if(!password_verify((string)$d['current'],$existing['password_hash']))fail('La contraseña de tu cuenta Fansxe no coincide.',403);
+  if(!empty($d['linkCode'])) {
+   $proof=$_SESSION['google_link']??[];
+   if(!google_link_valid($proof,$existing['id'],$c['sub'],(string)$d['linkCode']))fail('Código incorrecto o vencido. Revisa el correo o solicita otro.',403);
+  }elseif(!password_verify((string)($d['current']??''),$existing['password_hash']))fail('La contraseña de tu cuenta Fansxe no coincide.',403);
   if(row('SELECT user_id FROM google_identities WHERE user_id=?',[$existing['id']]))fail('Esta cuenta ya está vinculada a otra identidad de Google.',409);
-  query('INSERT INTO google_identities(firebase_uid,user_id) VALUES(?,?)',[$c['sub'],$existing['id']]);login_user($existing);output(['ok'=>true,'csrf'=>$_SESSION['csrf']]);
+  query('INSERT INTO google_identities(firebase_uid,user_id) VALUES(?,?)',[$c['sub'],$existing['id']]);unset($_SESSION['google_link']);login_user($existing);output(['ok'=>true,'csrf'=>$_SESSION['csrf']]);
  }
  if(empty($d['username']))output(['needsProfile'=>true,'name'=>mb_substr((string)($c['name']??''),0,60)]);
  if(($d['adult']??false)!==true)fail('Confirma que tienes 18 años o más.');

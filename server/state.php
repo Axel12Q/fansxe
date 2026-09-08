@@ -48,7 +48,7 @@ function snapshot(array $u,array $options=[]): array {
   $conversations[$id]['messages'][]=['id'=>$r['id'],'senderId'=>client_id($r['sender_id'],$u),'text'=>$r['text'],'media'=>json_value($r['media']),'createdAt'=>str_replace(' ','T',$r['created_at']).'Z','read'=>!!$r['read_at'],'storyReply'=>(bool)$r['story_reply'],'story'=>$preview];
  }
  $notifications=[];$read=[];
- foreach(query('SELECT * FROM notifications WHERE recipient_id=? ORDER BY created_at DESC LIMIT 100',[$u['id']]) as $r) { $notifications[]=['id'=>$r['id'],'userId'=>client_id($r['actor_id'],$u),'kind'=>$r['kind'],'href'=>$r['kind']==='message'?'mensajes.html?user='.rawurlencode(client_id($r['actor_id'],$u)):null,'text'=>$r['text'],'time'=>date('d/m/Y H:i',strtotime($r['created_at']))]; if($r['read_at']) $read[$r['id']]=true; }
+ foreach(query('SELECT * FROM notifications WHERE recipient_id=? ORDER BY created_at DESC LIMIT 100',[$u['id']]) as $r) { $notifications[]=['id'=>$r['id'],'userId'=>client_id($r['actor_id'],$u),'kind'=>$r['kind'],'href'=>$r['kind']==='message'?'mensajes.html?user='.rawurlencode(client_id($r['actor_id'],$u)):($r['kind']==='payout'?'admin.html':null),'text'=>$r['text'],'time'=>date('d/m/Y H:i',strtotime($r['created_at']))]; if($r['read_at']) $read[$r['id']]=true; }
  $requests=[];
  foreach(query('SELECT * FROM age_requests'.($u['role']==='admin'?'':' WHERE user_id=?').' ORDER BY submitted_at,id',$u['role']==='admin'?[]:[$u['id']]) as $r) $requests[]=['id'=>$r['id'],'userId'=>client_id($r['user_id'],$u),'document'=>media_data($r['document_id']),'status'=>$r['status'],'note'=>$r['note'],'submittedAt'=>timestamp($r['submitted_at']),'reviewedAt'=>$r['reviewed_at']?timestamp($r['reviewed_at']):null];
  $stories=[]; $storyLikes=[];$storySeen=[];

@@ -5,7 +5,7 @@
     set('#deletePostModal p', 'Se eliminarán la publicación, sus comentarios y reacciones. No puedes deshacerlo.');
     function unreadBadges(){
         const count=Object.values(FansxeStore.state.conversations).reduce((sum,c)=>sum+(c.unreadCount||0),0);
-        document.querySelectorAll('a[href="mensajes.html"]').forEach(a=>{a.classList.add('has-message-badge');let b=a.querySelector('.nav-message-count');if(!b){b=document.createElement('span');b.className='nav-message-count';a.append(b);}b.hidden=!count;b.textContent=count>99?'99+':String(count);b.setAttribute('aria-label',count+' mensajes sin leer');});
+        document.querySelectorAll('a[href="mensajes.html"],button[aria-label="Mensajes"]').forEach(a=>{a.classList.add('has-message-badge');let b=a.querySelector('.nav-message-count');if(!b){b=document.createElement('span');b.className='nav-message-count';a.append(b);}b.hidden=!count;b.textContent=count>99?'99+':'+'+String(count);b.setAttribute('aria-label',count+' mensajes sin leer');});
     }
     window.addEventListener('fansxe:change',unreadBadges);unreadBadges();
     set('.notification-toolbar + .field-help', 'Actividad reciente de tu comunidad.');

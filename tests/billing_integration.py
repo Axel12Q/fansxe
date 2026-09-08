@@ -125,6 +125,9 @@ try:
     remote_subs.append(subscription['id']);hook('customer.subscription.created',{'id':subscription['id']})
     b.get('state');sub=b.data['billing']['subscriptions'][0];check(sub['status']=='trialing','free trial recorded from Stripe')
     a.get('state');check(int(a.data['billing']['totals']['gross'])==0,'free trial generates no earnings')
+    check(a.data['billing']['subscribers'][0]['user_id']==bid and int(a.data['billing']['audience']['trials'])==1,'creator sees subscriber and trial metrics')
+    b.get('state');check(not b.data['billing']['subscribers'],'subscriber list is private to creator')
+    a.post('activity-email',{'enabled':False});check(a.status==200 and not a.data['snapshot']['billing']['activityEmail'],'activity email preference persists')
     b.post('stripe-cancel',{'id':sub['stripe_id']});check(b.status==200 and b.data['snapshot']['billing']['subscriptions'][0]['cancel_at_end'],'cancel at period end')
     b.post('stripe-resume',{'id':sub['stripe_id']});check(b.status==200 and not b.data['snapshot']['billing']['subscriptions'][0]['cancel_at_end'],'resume renewal')
     a.post('stripe-cancel',{'id':sub['stripe_id']});check(a.status==404,'cannot cancel another buyer subscription')
@@ -151,6 +154,7 @@ try:
     sql("query('UPDATE billing_payments SET available_at=? WHERE charge_id=?',[time()-1,'"+sale['charge_id']+"']);")
     a.post('withdrawal',{'amount':10000,'bank':'Test bank','holder':'Isolated test','clabe':'032180000118359719'});check(a.status==200,'earned funds can be reserved for manual withdrawal')
     withdrawal=a.data['snapshot']['billing']['withdrawals'][0]
+    admin.get('state');check(any(n['kind']=='payout' and n['href']=='admin.html' for n in admin.data['data']['notifications']),'withdrawal notifies admin with review link')
     check('bank_data' not in withdrawal and 'clabe' not in withdrawal,'bank details never in general snapshot')
     a.post('withdrawal',{'amount':10000,'bank':'Test bank','holder':'Isolated test','clabe':'032180000118359719'});check(a.status==400,'cannot withdraw reserved earnings twice')
     b.post('withdrawal-details',{'id':withdrawal['id']});check(b.status==403,'bank details restricted to admin')

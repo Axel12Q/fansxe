@@ -24,3 +24,10 @@ test('Google linking asks for the existing Fansxe password instead of creating a
  const c=load(t,{needsLink:true});await tick();c.d.querySelector('[data-google]').click();await tick();
  assert.ok(c.d.querySelector('#google-current').required);assert.equal(c.d.querySelector('#google-username'),null);assert.ok(c.d.querySelector('a[href="recuperar.html"]'));
 });
+
+test('Google offers an email code for existing accounts without asking them to register again',async t=>{
+ const c=load(t,{needsLink:true});await tick();c.d.querySelector('[data-google]').click();await tick();let data;c.w.FansxeAPI=async(action,input)=>{data=input;return {needsLink:true,codeSent:true};};c.d.querySelector('#google-send-code').click();await tick();assert.equal(data.sendLinkCode,true);assert.ok(c.d.querySelector('[name="linkCode"]').required);assert.equal(c.d.querySelector('#google-username'),null);assert.equal(c.d.querySelector('#auth-form').hidden,true);
+});
+test('Google popup is not opened twice while authentication is pending',async t=>{
+ const c=load(t,{needsLink:true});await tick();let calls=0,resolve;c.w.testSDK.signInWithPopup=()=>{calls++;return new Promise(r=>resolve=r);};c.d.querySelector('[data-google]').click();await tick();c.d.querySelector('[data-google]').click();assert.equal(calls,1);resolve({user:{getIdToken:async()=> 'token'}});await tick();assert.ok(c.d.querySelector('#google-current'));
+});

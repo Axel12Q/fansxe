@@ -182,7 +182,7 @@ test('custom player connects playback, seeking, mute, volume, speed and fullscre
     player.querySelector('[data-video="play"]').click(); assert.equal(paused, true);
     video.dispatchEvent(new c.w.Event('loadedmetadata'));
     const seek = player.querySelector('[data-video="seek"]'); seek.value = '30'; seek.dispatchEvent(new c.w.Event('input')); assert.equal(video.currentTime, 30);
-    player.querySelector('[data-video="mute"]').click(); assert.equal(video.muted, true);
+    assert.equal(video.muted,true); player.querySelector('[data-video="mute"]').click(); assert.equal(video.muted, false);
     const volume = player.querySelector('[data-video="volume"]'); volume.value = '0.5'; volume.dispatchEvent(new c.w.Event('input')); assert.equal(video.volume, 0.5); assert.equal(video.muted, false);
     const speed = player.querySelector('[data-video="speed"]'); speed.value = '1.5'; speed.dispatchEvent(new c.w.Event('change')); assert.equal(video.playbackRate, 1.5);
     player.querySelector('[data-video="fullscreen"]').click(); await flush(); assert.equal(full, true);

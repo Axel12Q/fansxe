@@ -12,9 +12,11 @@ function billing_state(array $u): array {
  $totals=row("SELECT COUNT(*) sales,COALESCE(SUM(p.gross),0) gross,COALESCE(SUM(p.platform_fee),0) commission,COALESCE(SUM(p.stripe_fee),0) processing,COALESCE(SUM(p.net),0) net FROM billing_payments p JOIN billing_orders o ON o.id=p.order_id WHERE o.creator_id=?",[$u['id']]);
  $withdrawals=query('SELECT id,user_id,amount,bank_last4,bank_name,status,reference,note,created_at,reviewed_at FROM billing_withdrawals'.($admin?'':' WHERE user_id=?').' ORDER BY created_at DESC LIMIT 100',$admin?[]:[$u['id']])->fetchAll();
  $subs=query('SELECT * FROM billing_subscriptions WHERE user_id=? ORDER BY updated_at DESC',[$u['id']])->fetchAll();
+ $subscribers=query("SELECT s.stripe_id,s.user_id,s.status,s.amount,s.period_end,s.cancel_at_end,u.name,u.handle FROM billing_subscriptions s JOIN users u ON u.id=s.user_id WHERE s.creator_id=? ORDER BY s.updated_at DESC LIMIT 100",[$u['id']])->fetchAll();
+ $audience=row("SELECT COUNT(*) total,COALESCE(SUM(status='active'),0) active,COALESCE(SUM(status='trialing'),0) trials,COALESCE(SUM(status IN ('active','trialing') AND cancel_at_end=0),0) renewing FROM billing_subscriptions WHERE creator_id=?",[$u['id']]);
  $movements=$admin?row('SELECT COUNT(*) payments,COALESCE(SUM(gross),0) gross,COALESCE(SUM(stripe_fee),0) processing,COALESCE(SUM(platform_fee),0) commission,COALESCE(SUM(refunded),0) refunded FROM billing_payments'):null;
  $gems=(int)query('SELECT COALESCE(SUM(amount),0) FROM gem_ledger WHERE user_id=?',[$u['id']])->fetchColumn();
- return ['test'=>true,'currency'=>'MXN','commission'=>15,'plusPrice'=>19900,'plusOwned'=>(bool)($u['plus_owned']??false),'price'=>(int)($u['subscription_mxn']??9900),'trialDays'=>(int)($u['trial_days']??0),'available'=>max(0,billing_available($u['id'])),'balance'=>billing_available($u['id']),'gems'=>$gems,'gemPackages'=>[['id'=>'spark','gems'=>100,'amount'=>3900,'label'=>'Destello'],['id'=>'glow','gems'=>550,'amount'=>9900,'label'=>'Resplandor'],['id'=>'galaxy','gems'=>1200,'amount'=>19900,'label'=>'Galaxia']],'sales'=>$sales,'totals'=>$totals,'withdrawals'=>$withdrawals,'subscriptions'=>$subs,'movements'=>$movements,'marketingEmail'=>(bool)($u['marketing_email']??false)];
+ return ['test'=>true,'currency'=>'MXN','commission'=>15,'plusPrice'=>19900,'plusOwned'=>(bool)($u['plus_owned']??false),'price'=>(int)($u['subscription_mxn']??9900),'trialDays'=>(int)($u['trial_days']??0),'available'=>max(0,billing_available($u['id'])),'balance'=>billing_available($u['id']),'gems'=>$gems,'gemPackages'=>[['id'=>'spark','gems'=>100,'amount'=>3900,'label'=>'Destello'],['id'=>'glow','gems'=>550,'amount'=>9900,'label'=>'Resplandor'],['id'=>'galaxy','gems'=>1200,'amount'=>19900,'label'=>'Galaxia']],'sales'=>$sales,'totals'=>$totals,'withdrawals'=>$withdrawals,'subscriptions'=>$subs,'subscribers'=>$subscribers,'audience'=>$audience,'activityEmail'=>(bool)($u['activity_email']??true),'movements'=>$movements,'marketingEmail'=>(bool)($u['marketing_email']??false)];
 }
 function billing_customer(array $u): string {
  $found=row('SELECT stripe_id FROM billing_customers WHERE user_id=?',[$u['id']]);if($found)return $found['stripe_id'];
@@ -72,6 +74,7 @@ function billing_action(string $action,array $d,array $u): mixed {
  if($action==='stripe-portal') {
   $customer=billing_customer($u);$portal=stripe_api('POST','/billing_portal/sessions',['customer'=>$customer,'configuration'=>billing_config()['portal'],'return_url'=>config()['origin'].'/suscripciones.html']);return ['url'=>$portal['url']];
  }
+ if($action==='activity-email'){query('UPDATE users SET activity_email=? WHERE id=?',[!empty($d['enabled'])?1:0,$u['id']]);return true;}
  if($action==='billing-email'){query('UPDATE users SET marketing_email=? WHERE id=?',[!empty($d['enabled'])?1:0,$u['id']]);return true;}
  if($action==='withdrawal-details') {
   if($u['role']!=='admin')fail('Solo administradores.',403);$r=row('SELECT * FROM billing_withdrawals WHERE id=?',[$d['id']??'']);if(!$r)fail('Solicitud no disponible.',404);return billing_decrypt($r['bank_data']);
@@ -82,6 +85,7 @@ function billing_action(string $action,array $d,array $u): mixed {
   $amount=filter_var($d['amount']??0,FILTER_VALIDATE_INT);if(!$amount||$amount<10000||$amount>billing_available($u['id']))fail('El retiro mínimo es $100 MXN y solo puede usar tus ganancias disponibles.');
   $bank=str_value($d,'bank',100,true);$holder=str_value($d,'holder',120,true);$clabe=preg_replace('/\s/','',str_value($d,'clabe',30,true));if(!valid_clabe($clabe))fail('Revisa la CLABE de 18 dígitos.');
   query('INSERT INTO billing_withdrawals(id,user_id,amount,bank_data,bank_last4,bank_name) VALUES(?,?,?,?,?,?)',[uid(),$u['id'],$amount,billing_encrypt(['holder'=>$holder,'clabe'=>$clabe,'bank'=>$bank]),substr($clabe,-4),$bank]);
+  foreach(query("SELECT id FROM users WHERE role='admin'") as $admin)notify_user($admin['id'],$u['id'],'payout','solicitó un retiro. Revisa los datos en Administración.');
  }elseif($action==='withdrawal-review') {
   if($u['role']!=='admin')fail('Solo administradores.',403);$r=row('SELECT * FROM billing_withdrawals WHERE id=? FOR UPDATE',[$d['id']??'']);if(!$r||$r['status']!=='pending')fail('La solicitud ya fue revisada.');
   query('SELECT id FROM users WHERE id=? FOR UPDATE',[$r['user_id']]);$decision=$d['decision']??'';$reference=str_value($d,'reference',150);$note=str_value($d,'note',500);

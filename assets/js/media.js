@@ -61,6 +61,31 @@
         await transaction('readwrite', files => files.delete(id));
     }
     const time = value => Number.isFinite(value) ? `${Math.floor(value / 60)}:${String(Math.floor(value % 60)).padStart(2, '0')}` : '0:00';
+    const visibleVideos = new Map();
+    let autoplayObserver;
+    const chooseVideo = () => {
+        let best=null, score=0;
+        for(const [video,ratio] of visibleVideos) {
+            if(!video.isConnected){autoplayObserver?.unobserve(video);visibleVideos.delete(video);continue;}
+            if(ratio>=.55 && ratio>score && !video.dataset.userPaused){best=video;score=ratio;}
+        }
+        if(document.hidden || window.FansxeApp?.activeModal)best=null;
+        for(const video of visibleVideos.keys()) {
+            if(video!==best){if(!video.paused)video.pause();}
+            else if(video.paused && !video.dataset.autoStarting){video.dataset.autoStarting='true';Promise.resolve(video.play()).catch(()=>{}).finally(()=>delete video.dataset.autoStarting);}
+        }
+    };
+    document.addEventListener('visibilitychange',chooseVideo);
+    window.addEventListener('fansxe:modal-opened',chooseVideo);
+    window.addEventListener('fansxe:modal-closed',()=>setTimeout(chooseVideo,0));
+    function observeVideo(video) {
+        if(!video.closest('.post-card') || !window.IntersectionObserver)return;
+        autoplayObserver ||= new IntersectionObserver(entries=>{
+            for(const entry of entries){visibleVideos.set(entry.target,entry.isIntersecting?entry.intersectionRatio:0);if(!entry.isIntersecting)delete entry.target.dataset.userPaused;}
+            chooseVideo();
+        },{threshold:[0,.25,.55,.75,1]});
+        visibleVideos.set(video,0);autoplayObserver.observe(video);
+    }
     function player(root) {
         if (root.dataset.ready) return;
         root.dataset.ready = 'true';
@@ -72,6 +97,7 @@
         const mute = root.querySelector('[data-video="mute"]');
         const status = root.querySelector('.player-status');
         const refresh = () => {
+            root.classList.toggle('is-playing',!video.paused);
             play.textContent = video.paused ? '▶' : 'Ⅱ'; play.setAttribute('aria-label', video.paused ? 'Reproducir video' : 'Pausar video');
             seek.max = Number.isFinite(video.duration) ? video.duration : 0;
             seek.value = video.currentTime || 0;
@@ -79,10 +105,15 @@
             root.querySelector('.player-time').textContent = `${time(video.currentTime)} / ${time(video.duration)}`;
             mute.textContent = video.muted ? 'Activar sonido' : 'Silenciar';
         };
-        play.addEventListener('click', async () => {
-            try { if (video.paused) await video.play(); else video.pause(); }
+        const toggle = async () => {
+            try { if (video.paused) {delete video.dataset.userPaused;await video.play();} else {video.dataset.userPaused='true';video.pause();} }
             catch { status.textContent = 'No se pudo reproducir. Prueba un MP4 H.264 o WebM compatible.'; }
-        });
+        };
+        play.addEventListener('click',toggle);
+        video.addEventListener('click',toggle);
+        const center=root.querySelector('.video-center-play');if(center){center.hidden=false;center.addEventListener('click',toggle);}
+        video.muted=true;
+        observeVideo(video);
         video.addEventListener('play', () => { document.querySelectorAll('video').forEach(v => { if (v !== video) v.pause(); }); refresh(); });
         ['pause', 'timeupdate', 'loadedmetadata', 'volumechange', 'ended'].forEach(type => video.addEventListener(type, refresh));
         video.addEventListener('error', () => { status.textContent = 'Formato no reproducible en este navegador. Prueba otro MP4 o WebM.'; });

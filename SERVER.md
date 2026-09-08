@@ -77,3 +77,18 @@ Google utiliza el proyecto fansxe-44e1f y Firebase JS 12.18.0. PHP valida firma 
 El alta por contraseña y por Google envía un correo HTML de bienvenida desde soporte mediante el transporte de correo del hosting. welcome_mail registra aceptación del transporte, no lectura ni entrega definitiva. Un fallo de correo no impide crear la cuenta. Las cuentas .invalid de las pruebas no reciben correo. Se confirmó entrega a la bandeja de soporte de una muestra de la plantilla.
 
 Plus activa cuatro colores y tres bordes limitados al perfil. Mayor visibilidad y promoción están identificadas como próximas funciones, sin alterar por ahora el orden del feed. Las compras usan Stripe en modo de prueba y los retiros se registran manualmente, sin transferencia de dinero real.
+
+
+## Paneles, reproducción y correos de actividad (septiembre 2026)
+
+Stripe añade su propia navegación a Gemas y Plus, Espacio de creador y Mis suscripciones. El panel de creador muestra ventas, comisiones, ganancias disponibles, suscriptores y pruebas; las últimas 100 suscripciones aparecen con nombre, username, estado y periodo. El administrador conserva la revisión de documentos, movimientos y retiros con datos bancarios bajo consulta autorizada. Las recargas no forman parte del saldo retirable.
+
+El feed reproduce un solo video visible a la vez, inicialmente silenciado. Una pausa manual se conserva hasta salir de pantalla. Abrir un modal o cambiar de pestaña pausa el video. Los controles se superponen y las imágenes conservan sus proporciones naturales.
+
+Una cuenta Google ya vinculada entra directamente. Una cuenta local existente puede vincularse con su contraseña o con un código de seis dígitos enviado al correo registrado. El código se guarda como hash en la sesión, se vincula al usuario y a la identidad Google, vence en diez minutos y está limitado por intentos. No se fusionan cuentas solo por coincidencia de correo. La prueba final de la ventana Google requiere la cuenta Google del propietario.
+
+La migración 007 añade `activity_email` y `activity_mail_state`. Los resúmenes agrupan mensajes y notificaciones sin leer de más de 15 minutos y se envían como máximo una vez cada 24 horas por usuario. Se omiten usuarios activos durante los últimos 15 minutos y correos `.invalid`; las preferencias se cambian en Configuración. No incluyen el texto privado de los mensajes. Un fallo de transporte se vuelve a intentar como pronto una hora después. `last_sent_at` registra aceptación del transporte, no entrega en bandeja.
+
+El mantenimiento se ejecuta con el tráfico de la web y dispone de un trabajador CLI: `php8.4 /home/www/public/server/mail-worker.php`. La cuenta SSH actual no dispone de `crontab`; para entrega regular incluso sin visitas, programar ese comando cada 15 minutos desde el panel de tareas de IONOS. No se creó una tarea de sistema inexistente. Los correos de pagos se procesan por separado de los resúmenes.
+
+Validación adicional: `node --test tests/feed-video.test.cjs tests/google-ui.test.cjs tests/server-ui.test.cjs`; en el hosting, `php8.4 tests/activity-mail.php /ruta/de/release` usa una transacción revertida y no envía correos. Las pruebas de Stripe verifican que solo se retire dinero ganado, que la CLABE se entregue únicamente al administrador y que se requiera una referencia para marcar un retiro pagado.

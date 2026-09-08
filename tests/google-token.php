@@ -15,3 +15,9 @@ foreach(['aud'=>'other-project','iss'=>'https://attacker.invalid','exp'=>time()-
 foreach([$token($base,'HS256'),$token($base).'-invalid'] as $bad) {
  try{google_claims($bad,['test-key'=>$public]);throw new LogicException('Invalid signature accepted');}catch(LogicException $e){throw $e;}catch(RuntimeException $e){echo "PASS reject algorithm/signature\n";}
 }
+
+$proof=['user'=>'user-a','sub'=>'google-a','hash'=>hash('sha256','123456'),'expires'=>time()+60];
+if(!google_link_valid($proof,'user-a','google-a','123456'))throw new RuntimeException('Valid link proof rejected');
+foreach([[$proof,'user-b','google-a','123456'],[$proof,'user-a','google-b','123456'],[$proof,'user-a','google-a','654321'],[array_replace($proof,['expires'=>time()-1]),'user-a','google-a','123456']] as $args)if(google_link_valid(...$args))throw new RuntimeException('Invalid link proof accepted');
+echo "PASS Google link proof binds account, identity, code and expiry\n";
+if(str_contains(google_link_html('<script>','123456'),'<script>'))throw new RuntimeException('Unescaped mail name');
