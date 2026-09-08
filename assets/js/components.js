@@ -60,10 +60,10 @@
         return `<div class="comment"><span class="comment-avatar">${escape(author.slice(0, 1))}</span><p><strong>${escape(author)}</strong> ${richText(c.text)}</p></div>`;
     }
     function post(p, expanded = false) {
-        const store = FansxeStore, creator = store.user(p.creatorId), readable = store.canRead(p), liked = store.state.likes[p.id] === true;
+        const store = FansxeStore, creator = store.user(p.creatorId), readable = store.canRead(p), subscriptionAvailable = !!creator?.privateAllowed || creator?.creatorStatus === 'approved', liked = store.state.likes[p.id] === true;
         const comments = [...p.comments, ...(store.state.comments[p.id] || [])];
         let attachment = '';
-        if (!readable && window.FansxeBoot && creator.creatorStatus !== 'approved') attachment = '<div class="locked-media"><strong>Contenido privado</strong><span>Este perfil no tiene suscripciones disponibles.</span></div>';
+        if (!readable && window.FansxeBoot && !subscriptionAvailable) attachment = '<div class="locked-media"><strong>Contenido privado</strong><span>Suscríbete para poder verlo cuando este perfil habilite suscripciones.</span></div>';
         else if (!readable) attachment = `<button class="locked-media" data-action="subscribe" data-creator="${p.creatorId}"><span class="lock-badge">${icon('lock')}</span><strong>Contenido Exclusivo</strong><span>Suscríbete a ${escape(creator.name)} para ver esta publicación.</span><span class="button-primary">${window.FansxeBoot?.billing ? 'Desbloquear · $' + (creator.subscriptionMxn/100).toFixed(2) + ' MXN / mes' : window.FansxeBoot ? 'Desbloquear · ' + number(creator.subscriptionGems) + ' gemas / mes' : 'Desbloquear · $4.99 / mes'}</span></button>`;
         else if (p.media?.length) attachment = media(p.media);
         else if (p.image) attachment = `<button class="post-media" data-action="photo" data-post="${p.id}" aria-label="Ampliar: ${escape(p.alt)}"><img src="${escape(p.image)}" alt="${escape(p.alt)}" loading="lazy"></button>`;
