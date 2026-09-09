@@ -153,7 +153,7 @@
             if (!p || !card) return;
             const liked = !!store.state.likes[p.id], like = card.querySelector('[data-action="like"]');
             like.classList.toggle('is-liked', liked); like.setAttribute('aria-pressed', String(liked)); like.innerHTML = ui.icon('heart', liked) + `<span>${ui.number(p.likes + (liked ? 1 : 0))}</span>`;
-            if (change.action === 'comment') { const comments = [...p.comments, ...(store.state.comments[p.id] || [])]; card.querySelector('.comment-list').innerHTML = comments.map(ui.comment).join(''); card.querySelector('[data-action="comments"] span').textContent = comments.length; }
+            if (change.action === 'comment') { const comments = [...p.comments, ...(store.state.comments[p.id] || [])]; card.querySelector('.comment-list').innerHTML = comments.map(ui.comment).join(''); media.hydrate(card.querySelector('.comment-list')); card.querySelector('[data-action="comments"] span').textContent = comments.length; }
             return;
         }
         if (change && !['publish', 'delete-post', 'profile', 'follow', 'gem-purchase'].includes(change.action) && ['inicio','perfil'].includes(page)) return;

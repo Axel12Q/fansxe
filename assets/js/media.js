@@ -144,6 +144,7 @@
                 try { const source = await url(el.dataset.asset); if (el.isConnected) el.src = source; }
                 catch (error) {
                     if (!el.isConnected) return;
+                    el.dispatchEvent(new Event('error'));
                     const message = document.createElement('span'); message.className = 'asset-error'; message.textContent = error.message;
                     el.replaceWith(message);
                 }

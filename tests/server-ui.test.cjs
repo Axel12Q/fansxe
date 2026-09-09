@@ -126,3 +126,19 @@ test('unread message badges appear on desktop and the mobile button and clear af
 test('activity email preference is persisted through the authenticated API',async t=>{
  const c=load(t,'configuracion.html',billingFixture());await tick();const checkbox=c.d.querySelector('#activity-email');checkbox.checked=false;checkbox.dispatchEvent(new c.w.Event('change'));await tick();const call=c.calls.find(x=>x.url.includes('action=activity-email'));assert.equal(JSON.parse(call.options.body).enabled,false);assert.deepEqual(c.errors,[]);
 });
+
+test('Stripe keeps Plus profile controls and comments link to the actual author photo',async t=>{
+ const boot=billingFixture();boot.data.creators.demo.plus=true;boot.data.creators.demo.profileAccent='ocean';boot.data.creators.demo.profileBorder='double';boot.data.creators.demo.avatar='/avatar-test.png';
+ const c=load(t,'perfil.html',boot);await tick();c.d.querySelector('[data-action="edit-profile"]').click();
+ assert.equal(c.d.querySelector('#profile-accent').disabled,false);assert.equal(c.d.querySelector('#profile-accent').value,'ocean');
+ assert.equal(c.d.querySelector('#profile-border').selectedOptions[0].textContent,'Satinado');assert.equal(c.d.querySelector('#page-content').dataset.profileAccent,'ocean');
+ assert.equal(c.d.querySelectorAll('nav a[href="creador.html"]').length,2);
+ const box=c.d.createElement('div');box.innerHTML=c.w.FansxeComponents.comment({userId:'demo',text:'Hello'});
+ assert.equal(box.querySelectorAll('a[href="perfil.html?user=demo"]').length,2);assert.equal(box.querySelector('img').getAttribute('src'),'/avatar-test.png');assert.deepEqual(c.errors,[]);
+});
+test('own story heart is a read-only counter',async t=>{
+ const boot=fixture();boot.community.stories=[{id:'own-story',creatorId:'demo',text:'Hello',media:[],visibility:'public',createdAt:Date.now(),expiresAt:Date.now()+60000,available:true,likeCount:3}];
+ const c=load(t,'inicio.html',boot);await tick();c.d.querySelector('[data-feature="view-stories"]').click();
+ assert.ok(c.d.querySelector('#story-like').disabled);assert.equal(c.d.querySelector('#story-like').dataset.feature,undefined);
+ c.d.querySelector('#story-like').click();assert.ok(!c.calls.some(x=>x.url.includes('action=story-like')));assert.deepEqual(c.errors,[]);
+});

@@ -1,10 +1,12 @@
 (() => {
-    if (!window.FansxeBoot || !window.FansxeApp || window.FansxeBoot.billing) return;
+    if (!window.FansxeBoot || !window.FansxeApp) return;
     const app=FansxeApp, store=FansxeStore, ui=FansxeComponents, $=id=>document.getElementById(id), e=ui.escape, n=ui.number, page=document.body.dataset.page;
     let checkout=null, busy=false;
     const gem=ui.icon('gem');
+    if (!FansxeBoot.billing) {
     $('modals-slot').insertAdjacentHTML('beforeend', `<div id="gemCheckout" class="app-modal hidden"><div class="modal-backdrop" data-action="close-modal"></div><section id="gemCheckoutContent" class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="gem-checkout-title" tabindex="-1"><h2 id="gem-checkout-title" class="text-xl font-bold">Confirmar compra de prueba</h2><div id="gem-checkout-body"></div><div class="form-footer"><button class="button-secondary" data-action="close-modal">Cancelar</button><button class="button-primary" data-commerce="confirm">Confirmar simulación</button></div></section></div>`);
     document.querySelectorAll('#sidebar-slot nav, #mobileDrawerContent nav').forEach(nav=>nav.insertAdjacentHTML('beforeend', `<a class="commerce-nav ${page==='gemas'?'nav-active':''}" href="gemas.html">${gem}<span>Gemas y Plus</span></a>${FansxeAuth.session()?`<a class="commerce-nav ${page==='creador'?'nav-active':''}" href="creador.html">${ui.icon('photo')}<span>Espacio de creador</span></a>`:''}`));
+    }
     const c=()=>store.commerce;
     const states={none:'Todavía no eres creador',pending:'Solicitud en revisión',approved:'Creador aprobado',rejected:'Solicitud rechazada'};
     function gemsPage() {
@@ -33,8 +35,8 @@
         const node=$('page-content');node.dataset.profileAccent=u?.plus?u.profileAccent||'purple':'purple';node.dataset.profileBorder=u?.plus?u.profileBorder||'soft':'soft';
     }
     function styleFields() {
-        let row=$('plus-style-fields');if(!row){row=document.createElement('div');row.id='plus-style-fields';row.innerHTML='<h3>Tu perfil, con Plus</h3><label class="form-label" for="profile-accent">Color de tu perfil</label><select class="text-field" name="profileAccent" id="profile-accent"><option value="purple">Violeta Fansxe</option><option value="rose">Rosa</option><option value="ocean">Océano</option><option value="amber">Ámbar</option></select><label class="form-label" for="profile-border">Borde del perfil</label><select class="text-field" name="profileBorder" id="profile-border"><option value="soft">Suave</option><option value="double">Doble</option><option value="glow">Brillo</option></select><p class="field-help">Solo cambia tu perfil. Requiere Plus activo.</p>';$('profile-form').querySelector('.form-footer').before(row);}
-        const u=store.user('demo');$('profile-accent').value=u.profileAccent||'purple';$('profile-border').value=u.profileBorder||'soft';row.querySelectorAll('select').forEach(el=>el.disabled=!u.plus);
+        let row=$('plus-style-fields');if(!row){row=document.createElement('div');row.id='plus-style-fields';row.innerHTML='<h3>Tu perfil, con Plus</h3><label class="form-label" for="profile-accent">Color de tu perfil</label><select class="text-field" name="profileAccent" id="profile-accent"><option value="purple">Violeta Fansxe</option><option value="rose">Rosa</option><option value="ocean">Océano</option><option value="amber">Ámbar</option></select><label class="form-label" for="profile-border">Borde del perfil</label><select class="text-field" name="profileBorder" id="profile-border"><option value="soft">Suave</option><option value="satin">Satinado</option><option value="glow">Brillo</option></select><p class="field-help">Solo cambia tu perfil. Requiere Plus activo.</p>';$('profile-form').querySelector('.form-footer').before(row);}
+        const u=store.user('demo');$('profile-accent').value=u.profileAccent||'purple';$('profile-border').value=u.profileBorder==='double'?'satin':u.profileBorder||'soft';row.querySelectorAll('select').forEach(el=>el.disabled=!u.plus);
     }
     window.addEventListener('fansxe:change',profileStyle);profileStyle();
     document.addEventListener('click',async event=>{

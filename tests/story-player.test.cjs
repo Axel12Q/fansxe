@@ -21,7 +21,9 @@ test('thought stories advance after six seconds and pause while held', async t=>
 });
 test('photo countdown waits for the image to finish loading', t=>{
     const c=player(t,'<img class="story-full-photo">');for(let i=0;i<80;i++)c.step();assert.equal(c.advances,0);
-    c.stage.querySelector('img').dispatchEvent(new c.w.Event('load'));for(let i=0;i<61;i++)c.step();assert.equal(c.advances,1);c.control.dispose();
+    assert.ok(c.stage.classList.contains('story-is-loading'));
+    assert.match(c.stage.querySelector('[role="status"]').textContent,/Cargando historia/);
+    c.stage.querySelector('img').dispatchEvent(new c.w.Event('load'));assert.ok(!c.stage.classList.contains('story-is-loading'));for(let i=0;i<61;i++)c.step();assert.equal(c.advances,1);c.control.dispose();
 });
 test('video starts automatically, pauses on hold and advances on ended', async t=>{
     const c=player(t,'<video playsinline></video>'),video=c.stage.querySelector('video');video.dispatchEvent(new c.w.Event('loadeddata'));await Promise.resolve();assert.equal(c.plays,1);

@@ -56,8 +56,11 @@
         return `<div class="media-gallery">${items.map(a => a.kind === 'video' ? video(`data-asset="${escape(a.id)}"`) : `<button class="gallery-image" data-action="asset-photo" data-asset-id="${escape(a.id)}" aria-label="Ampliar ${escape(a.name)}"><img data-asset="${escape(a.id)}" alt="${escape(a.name)}" loading="lazy"></button>`).join('')}</div>`;
     }
     function comment(c) {
-        const author = c.userId ? FansxeStore.user(c.userId)?.name || c.author : c.author;
-        return `<div class="comment"><span class="comment-avatar">${escape(author.slice(0, 1))}</span><p><strong>${escape(author)}</strong> ${richText(c.text)}</p></div>`;
+        const user = c.userId ? FansxeStore.user(c.userId) : null;
+        const author = user?.name || c.author || 'Usuario';
+        const picture = avatar(user || { id: c.userId || 'unknown', name: author });
+        const url = c.userId ? profileUrl(c.userId) : null;
+        return `<div class="comment">${url ? `<a class="comment-profile" href="${url}" aria-label="Ver perfil de ${escape(author)}">${picture}</a>` : picture}<p>${url ? `<a class="comment-author" href="${url}"><strong>${escape(author)}</strong></a>` : `<strong>${escape(author)}</strong>`} ${richText(c.text)}</p></div>`;
     }
     function post(p, expanded = false) {
         const store = FansxeStore, creator = store.user(p.creatorId), readable = store.canRead(p), subscriptionAvailable = !!creator?.privateAllowed || creator?.creatorStatus === 'approved', liked = store.state.likes[p.id] === true;

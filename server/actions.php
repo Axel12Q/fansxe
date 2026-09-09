@@ -48,7 +48,9 @@ function mutate(string $action,array $d,array $u): mixed {
   if(isset($f['profileAccent'])||isset($f['profileBorder'])) {
    if(!$u['plus_owned']&&(!$u['plus_expires_at']||strtotime($u['plus_expires_at'])<=time()))fail('La personalización del perfil requiere Plus activo.',403);
    $accent=$f['profileAccent']??$u['profile_accent'];$border=$f['profileBorder']??$u['profile_border'];
-   if(!in_array($accent,['purple','rose','ocean','amber'],true)||!in_array($border,['soft','double','glow'],true))fail('Estilo no disponible.');
+   // Los perfiles antiguos guardaban "double"; se conserva su apariencia al migrar al acabado satinado.
+   if($border==='double')$border='satin';
+   if(!in_array($accent,['purple','rose','ocean','amber'],true)||!in_array($border,['soft','satin','glow'],true))fail('Estilo no disponible.');
    query('UPDATE users SET profile_accent=?,profile_border=? WHERE id=?',[$accent,$border,$u['id']]);
   }
   query('UPDATE users SET name=?,handle=?,bio=?,location=?,avatar_asset=?,cover_asset=? WHERE id=?',[$name,strtolower($handle),str_value($f,'bio',500),str_value($f,'location',80),$avatar,$cover,$u['id']]); return 'success';

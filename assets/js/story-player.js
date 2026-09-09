@@ -26,13 +26,17 @@
             }
             started = now; frame = raf(tick);
         }
-        const loaded = () => { ready = true; started = performance.now(); tryPlay(); };
+        const loading = document.createElement('div');
+        loading.className = 'story-loading'; loading.setAttribute('role', 'status'); loading.textContent = 'Cargando historia…';
+        stage.append(loading);
+        stage.classList.toggle('story-is-loading', !ready && playable);
+        const loaded = () => { if (disposed) return; ready = true; stage.classList.remove('story-is-loading', 'story-media-error'); started = performance.now(); tryPlay(); };
         photo?.addEventListener('load', loaded); if (photo?.complete && photo.naturalWidth) loaded();
         video?.addEventListener('loadeddata', loaded);
         if (video?.readyState >= 2) loaded();
         const ended = () => { if (!paused && !disposed) next(); };
         video?.addEventListener('ended', ended);
-        const failed = () => { stage.classList.add('story-media-error'); ready = false; };
+        const failed = () => { if (disposed) return; stage.classList.remove('story-is-loading'); stage.classList.add('story-media-error'); ready = false; };
         video?.addEventListener('error', failed); photo?.addEventListener('error', failed);
         const down = event => {
             if (event.button > 0 || event.target.closest('button,a,input,textarea')) return;
