@@ -61,7 +61,7 @@ function snapshot(array $u,array $options=[]): array {
  foreach($conversations as $conversation)foreach($conversation['messages'] as $message)if($message['story']&&!in_array($message['story']['id'],array_column($stories,'id'),true))$stories[]=$message['story'];
  foreach(query('SELECT * FROM story_reactions WHERE user_id=?',[$u['id']]) as $r) {if($r['liked'])$storyLikes[$r['story_id']]=true; if($r['seen'])$storySeen[$r['story_id']]=true;}
  foreach($stories as &$story) {
-  $story['likeCount']=(int)query('SELECT COUNT(*) FROM story_reactions WHERE story_id=? AND liked=1 AND user_id<>?',[$story['id'],$u['id']===''?'':real_id($story['creatorId'],$u)])->fetchColumn();
+  $story['likeCount']=(int)query('SELECT COUNT(*) FROM story_reactions WHERE story_id=? AND liked=1',[$story['id']])->fetchColumn();
   if($story['creatorId']==='demo') {
    $story['viewers']=array_map(fn($r)=>['userId'=>client_id($r['user_id'],$u),'liked'=>(bool)$r['liked']],query('SELECT user_id,liked FROM story_reactions WHERE story_id=? AND seen=1 AND user_id<>?',[$story['id'],$u['id']])->fetchAll());
    $story['viewCount']=count($story['viewers']);

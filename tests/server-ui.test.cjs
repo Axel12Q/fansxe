@@ -136,9 +136,9 @@ test('Stripe keeps Plus profile controls and comments link to the actual author 
  const box=c.d.createElement('div');box.innerHTML=c.w.FansxeComponents.comment({userId:'demo',text:'Hello'});
  assert.equal(box.querySelectorAll('a[href="perfil.html?user=demo"]').length,2);assert.equal(box.querySelector('img').getAttribute('src'),'/avatar-test.png');assert.deepEqual(c.errors,[]);
 });
-test('own story heart is a read-only counter',async t=>{
+test('own story heart is interactive without leaking clicks to the page',async t=>{
  const boot=fixture();boot.community.stories=[{id:'own-story',creatorId:'demo',text:'Hello',media:[],visibility:'public',createdAt:Date.now(),expiresAt:Date.now()+60000,available:true,likeCount:3}];
  const c=load(t,'inicio.html',boot);await tick();c.d.querySelector('[data-feature="view-stories"]').click();
- assert.ok(c.d.querySelector('#story-like').disabled);assert.equal(c.d.querySelector('#story-like').dataset.feature,undefined);
- c.d.querySelector('#story-like').click();assert.ok(!c.calls.some(x=>x.url.includes('action=story-like')));assert.deepEqual(c.errors,[]);
+ assert.equal(c.d.querySelector('#story-like').disabled,false);assert.equal(c.d.querySelector('#story-like').dataset.feature,'story-like');
+ c.d.querySelector('#story-like').click();await tick();assert.ok(c.calls.some(x=>x.url.includes('action=story-like')));assert.deepEqual(c.errors,[]);
 });

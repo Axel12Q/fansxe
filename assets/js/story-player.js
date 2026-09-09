@@ -51,7 +51,7 @@
             const moved = Math.hypot(event.clientX-pointer.x, event.clientY-pointer.y)>20;
             const previousTap = pointer.x-stage.getBoundingClientRect().left < stage.clientWidth*.3;
             pointer = null; pause(false);
-            if (!held && !moved && event.type === 'pointerup') { if (video && stage.classList.contains('story-needs-play')) { stage.classList.remove('story-needs-play');tryPlay(); } else previousTap ? previous() : next(); }
+            if (!held && !moved && event.type === 'pointerup') { event.preventDefault(); event.stopPropagation(); document.dispatchEvent(new CustomEvent('fansxe:story-suppress-click')); if (video && stage.classList.contains('story-needs-play')) { stage.classList.remove('story-needs-play');tryPlay(); } else previousTap ? previous() : next(); }
         };
         const visibility = () => { if(document.hidden) video?.pause(); else {started=performance.now(); if(!paused)tryPlay();} };
         const focus = e => { if(e.target.matches('input,textarea'))pause(e.type==='focusin'); };

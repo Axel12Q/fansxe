@@ -100,7 +100,6 @@ function mutate(string $action,array $d,array $u): mixed {
    $text=str_value($d,'text',1000,true);
    send_message($u,$s['creator_id'],$text,[],$id); return true;
   }
-  if($s['creator_id']===$u['id'])return true;
   query('INSERT IGNORE INTO story_reactions(story_id,user_id) VALUES(?,?)',[$id,$u['id']]);
   query('UPDATE story_reactions SET '.($action==='story-seen'?'seen=1':'liked=NOT liked').' WHERE story_id=? AND user_id=?',[$id,$u['id']]);return true;
  case 'recharge': case 'purchase': fail('Los pagos aún no están habilitados. No se ha realizado ningún cargo.',409);
