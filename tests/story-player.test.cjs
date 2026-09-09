@@ -9,7 +9,7 @@ function player(t, media='') {
     w.HTMLMediaElement.prototype.play=function(){plays++;return Promise.resolve();};w.HTMLMediaElement.prototype.pause=()=>{pauses++;};
     w.eval(fs.readFileSync('assets/js/story-player.js','utf8'));const stage=w.document.querySelector('.story-stage');
     const control=w.FansxeStoryPlayer(stage,{next:()=>advances++,previous:()=>backs++});
-    function pointer(type){const ev=new w.Event(type,{bubbles:true});Object.assign(ev,{pointerId:1,clientX:100,clientY:100,button:0});stage.querySelector('.story-content').dispatchEvent(ev);}
+    function pointer(type){const ev=new w.Event(type,{bubbles:true,cancelable:true});Object.assign(ev,{pointerId:1,clientX:100,clientY:100,button:0});stage.querySelector('.story-content').dispatchEvent(ev);return ev;}
     return {w,stage,control,pointer,step(ms=100){now+=ms;const f=frame;frame=null;f?.(now);},get advances(){return advances},get plays(){return plays},get pauses(){return pauses}};
 }
 test('thought stories advance after six seconds and pause while held', async t=>{
@@ -29,4 +29,7 @@ test('video starts automatically, pauses on hold and advances on ended', async t
     const c=player(t,'<video playsinline></video>'),video=c.stage.querySelector('video');video.dispatchEvent(new c.w.Event('loadeddata'));await Promise.resolve();assert.equal(c.plays,1);
     c.pointer('pointerdown');assert.ok(c.pauses>0);video.dispatchEvent(new c.w.Event('ended'));assert.equal(c.advances,0);
     await new Promise(r=>setTimeout(r,200));c.pointer('pointerup');assert.ok(c.plays>=2);video.dispatchEvent(new c.w.Event('ended'));assert.equal(c.advances,1);c.control.dispose();
+});
+test('a story navigation tap consumes the pointer event', t=>{
+    const c=player(t);c.pointer('pointerdown');const up=c.pointer('pointerup');assert.equal(up.defaultPrevented,true);c.control.dispose();
 });
