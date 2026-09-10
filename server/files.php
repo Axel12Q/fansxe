@@ -20,6 +20,7 @@ function serve_file(array $u,string $id): never {
  if(!preg_match('/^[0-9a-f]{32}$/D',$id)) fail('Archivo no disponible.',404);
  $m=row('SELECT * FROM media WHERE id=?',[$id]);if(!$m)fail('Archivo no disponible.',404);
  $allowed=$m['owner_id']===$u['id'];
+ if(!$allowed&&row('SELECT badge_id FROM badge_designs WHERE asset_id=?',[$id]))$allowed=true;
  if(!$allowed) switch($m['purpose']) {
   case 'profile': $allowed=(bool)row('SELECT id FROM users WHERE avatar_asset=? OR cover_asset=?',[$id,$id])||(bool)row('SELECT id FROM story_highlights WHERE cover_asset=?',[$id]);break;
   case 'document': $allowed=$u['role']==='admin';break;

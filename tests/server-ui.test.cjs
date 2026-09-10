@@ -16,7 +16,7 @@ function load(t, file, boot = fixture()) {
     let html = fs.readFileSync(path.join(root, file.split('?')[0]), 'utf8').replace('assets/js/auth.js','assets/js/server-auth.js');
     for (const name of ['data','store','community-store']) html = html.replace(`<script src="assets/js/${name}.js" defer></script>`, '');
     html = html.replace('<script src="assets/js/media.js" defer></script>', '<script src="assets/js/server-store.js" defer></script><script src="assets/js/media.js" defer></script>');
-    html = html.replace('</body>', '<script src="assets/js/server-ui.js" defer></script><script src="assets/js/commerce.js" defer></script><script src="assets/js/highlights.js" defer></script><script src="assets/js/billing.js" defer></script><script src="assets/js/gem-social.js" defer></script></body>');
+    html = html.replace('</body>', '<script src="assets/js/server-ui.js" defer></script><script src="assets/js/commerce.js" defer></script><script src="assets/js/highlights.js" defer></script><script src="assets/js/billing.js" defer></script><script src="assets/js/gem-social.js" defer></script><script src="assets/js/badge-admin.js" defer></script></body>');
     const errors = [], calls = [], vc = new VirtualConsole(); vc.on('jsdomError', e => errors.push(e.message));
     const dom = new JSDOM(html, { url: 'https://fansxe.com/'+file, runScripts: 'outside-only', virtualConsole: vc });
     t.after(() => dom.window.close());const w=dom.window;w.FansxeBoot=boot;w.tailwind={};w.scrollTo=()=>{};
@@ -169,4 +169,18 @@ test('chat tips show balance, require confirmation and keep a stable request key
  c.d.querySelector('[data-chat-tip]').click();assert.equal(c.w.FansxeApp.activeModal,'gemTipModal');assert.ok(!c.calls.some(x=>x.url.includes('gem-tip')));
  c.d.querySelector('#gem-tip-form').dispatchEvent(new c.w.Event('submit',{bubbles:true,cancelable:true}));await tick();
  const call=c.calls.find(x=>x.url.includes('gem-tip')),data=JSON.parse(call.options.body);assert.equal(data.gems,20);assert.equal(data.context,'chat');assert.equal(data.id,'other');assert.ok(data.requestKey);assert.deepEqual(c.errors,[]);
+});
+test('badge administration previews colors, saves only on submit and restores defaults',async t=>{
+ const boot=billingFixture();const c=load(t,'admin.html',boot);await tick();
+ assert.equal(c.d.querySelectorAll('[data-badge-design]').length,5);
+ const form=c.d.querySelector('[data-badge-design="first-post"]');form.elements.color.value='#123456';form.elements.color.dispatchEvent(new c.w.Event('input',{bubbles:true}));
+ assert.equal(form.elements.original.checked,false);assert.equal(c.calls.some(x=>x.url.includes('badge-design')),false);
+ form.dispatchEvent(new c.w.Event('submit',{bubbles:true,cancelable:true}));await tick();
+ const data=JSON.parse(c.calls.find(x=>x.url.includes('badge-design')).options.body);assert.equal(data.background,'#123456');assert.equal(data.badge,'first-post');assert.equal(data.asset,null);
+ form.querySelector('[data-restore]').click();await tick();assert.equal(JSON.parse(c.calls.filter(x=>x.url.includes('badge-design')).at(-1).options.body).reset,true);assert.deepEqual(c.errors,[]);
+});
+test('custom badge artwork appears on profiles while untouched badges retain their icons',async t=>{
+ const boot=billingFixture();boot.data.creators.demo.firstPost=true;boot.data.creators.demo.firstStory=true;boot.community.badgeDesigns={'first-post':{asset:'b'.repeat(32),background:'#123456'}};
+ const c=load(t,'perfil.html',boot);await tick();const icons=c.d.querySelectorAll('#profile-badges .achievement-icon');assert.equal(icons.length,2);assert.ok(icons[0].querySelector('img').src.includes('b'.repeat(32)));assert.equal(icons[0].style.background,'rgb(18, 52, 86)');assert.ok(icons[1].querySelector('svg'));assert.deepEqual(c.errors,[]);
+ const other=billingFixture();other.session.role='user';const nonadmin=load(t,'admin.html',other);await tick();assert.equal(nonadmin.d.querySelector('#badge-designs'),null);
 });

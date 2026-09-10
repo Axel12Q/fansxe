@@ -6,6 +6,22 @@ function mutate(string $action,array $d,array $u): mixed {
  if(in_array($action,['message-read','highlight-save','highlight-delete'],true))return social_action($action,$d,$u);
  $id=real_id((string)($d['id']??''),$u);
  switch($action) {
+ case 'badge-design':
+  if($u['role']!=='admin')fail('Solo administradores pueden personalizar insignias.',403);
+  $badge=$d['badge']??'';
+  if(!in_array($badge,['first-post','first-story','community-100','community-1000','profile-complete'],true))fail('Insignia no válida.');
+  if(!empty($d['reset'])){query('DELETE FROM badge_designs WHERE badge_id=?',[$badge]);return true;}
+  $asset=$d['asset']??null;$background=$d['background']??null;
+  if($background!==null&&(!is_string($background)||!preg_match('/^#[0-9a-fA-F]{6}$/D',$background)))fail('Color no válido.');
+  if($asset!==null){
+   $m=row('SELECT * FROM media WHERE id=? AND owner_id=?',[$asset,$u['id']]);
+   $current=row('SELECT asset_id FROM badge_designs WHERE badge_id=?',[$badge]);
+   if(!$m||!in_array($m['mime'],['image/png','image/webp','image/jpeg'],true)||$m['size']>2*1024*1024||($m['purpose']!=='draft'&&$asset!==($current['asset_id']??null)))fail('Elige una imagen nueva PNG, WebP o JPG de hasta 2 MB.');
+   $dimensions=getimagesize(config()['storage'].'/'.$asset);
+   if(!$dimensions||$dimensions[0]!==$dimensions[1]||$dimensions[0]>2048)fail('Usa una imagen cuadrada 1:1 de hasta 2048 × 2048 píxeles.');
+   query("UPDATE media SET purpose='profile' WHERE id=?",[$asset]);
+  }
+  query('INSERT INTO badge_designs(badge_id,asset_id,background) VALUES(?,?,?) ON DUPLICATE KEY UPDATE asset_id=VALUES(asset_id),background=VALUES(background)',[$badge,$asset,$background]);return true;
  case 'profile-style':
   if(!$u['plus_owned']&&(!$u['plus_expires_at']||strtotime($u['plus_expires_at'])<=time()))fail('La personalización requiere Plus.',403);
   $accent=$d['accent']??'';$border=$d['border']??'';

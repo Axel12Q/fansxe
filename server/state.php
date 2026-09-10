@@ -31,6 +31,7 @@ function feed(array $u,array $options=[]): array {
  return ['posts'=>$posts,'hasMore'=>$more];
 }
 function snapshot(array $u,array $options=[]): array {
+ $badgeDesigns=[];foreach(query('SELECT * FROM badge_designs') as $design)$badgeDesigns[$design['badge_id']]=['asset'=>$design['asset_id'],'background'=>$design['background']];
  $following=[]; foreach(query('SELECT creator_id FROM follows WHERE follower_id=?',[$u['id']]) as $f) $following[client_id($f['creator_id'],$u)]=true;
  $followers=array_map(fn($r)=>client_id($r['follower_id'],$u),query('SELECT follower_id FROM follows WHERE creator_id=?',[$u['id']])->fetchAll());
  $users=[];
@@ -71,5 +72,5 @@ function snapshot(array $u,array $options=[]): array {
  if($u['role']==='guest')$users['demo']=['id'=>'demo','name'=>'Visitante','handle'=>'','bio'=>'','followers'=>0,'hiddenBadges'=>[],'creatorStatus'=>'none'];
  return ['guest'=>$u['role']==='guest','billing'=>billing_enabled()?billing_state($u):null,'commerce'=>commerce_state($u),'selfId'=>$u['id'],'session'=>$u['role']==='guest'?null:['email'=>$u['email'],'name'=>$u['name'],'role'=>$u['role']], 'csrf'=>$_SESSION['csrf'], 'data'=>['viewer'=>['id'=>'demo','name'=>$u['name']],'creators'=>(object)$users,'followers'=>$followers,'notifications'=>$notifications,'posts'=>[]],
  'state'=>['balanceCents'=>(int)query('SELECT COALESCE(SUM(amount_cents),0) FROM wallet_ledger WHERE user_id=?',[$u['id']])->fetchColumn(),'profile'=>[],'likes'=>(object)$likes,'following'=>(object)$following,'subscriptions'=>(object)$subscriptions,'comments'=>(object)[],'conversations'=>(object)$conversations,'readNotifications'=>(object)$read],
- 'community'=>['email'=>$u['email'],'theme'=>$u['theme'],'password'=>true,'hiddenBadges'=>json_value($u['hidden_badges']),'requests'=>$requests,'stories'=>$stories,'highlights'=>$highlights,'storyLikes'=>(object)$storyLikes,'storySeen'=>(object)$storySeen], 'feed'=>feed($u,$options)];
+ 'community'=>['badgeDesigns'=>(object)$badgeDesigns,'email'=>$u['email'],'theme'=>$u['theme'],'password'=>true,'hiddenBadges'=>json_value($u['hidden_badges']),'requests'=>$requests,'stories'=>$stories,'highlights'=>$highlights,'storyLikes'=>(object)$storyLikes,'storySeen'=>(object)$storySeen], 'feed'=>feed($u,$options)];
 }

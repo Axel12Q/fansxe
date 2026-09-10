@@ -594,6 +594,17 @@ html[data-theme="dark"] #page-content[data-profile-accent]{--profile-frame:#1e29
 #attachmentReviewModal{padding:0;background:#080910f5}#attachmentReviewModalContent{background:#10121b;color:#fff;width:min(100vw,36rem);height:100dvh;max-height:100dvh;padding:1rem;border-radius:0;display:flex;flex-direction:column;gap:.5rem}
 #attachmentReviewModalContent .modal-heading{margin:0;flex-shrink:0}#attachment-review-media{flex:1;min-height:0;display:grid;place-items:center}#attachment-review-media img,#attachment-review-media video{width:100%;height:100%;min-height:0;object-fit:contain}#attachment-review-position{font-size:.75rem;overflow-wrap:anywhere}.review-navigation{display:flex;justify-content:space-between;gap:1rem}#attachmentReviewModalContent .form-footer{margin:0;flex-wrap:wrap;padding-bottom:env(safe-area-inset-bottom)}
 #chat-nav-handle{display:none}
+.achievement-icon img{display:block;width:100%;height:100%;object-fit:contain;border-radius:inherit}
+.badge-design-panel{margin:1.25rem}
+.badge-design-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,19rem),1fr));gap:1rem;margin-top:1.25rem}
+.badge-design-card{min-width:0;border:1px solid var(--color-border);border-radius:1rem;padding:1rem;background:var(--color-bg)}
+.badge-design-heading{display:flex;align-items:center;gap:.8rem;margin-bottom:1rem}
+.badge-design-heading h3{font-weight:700}
+.badge-design-heading .achievement-icon{width:4rem;height:4rem;flex:0 0 4rem}
+.badge-design-card input[type=file]{font-size:.8rem;margin:.5rem 0}
+.badge-design-color{display:flex;align-items:center;justify-content:space-between;margin-top:1rem;gap:1rem}
+.badge-design-color input{width:3rem;height:2.5rem;border:1px solid var(--color-border);border-radius:.5rem;background:transparent;padding:.2rem}
+.badge-design-card .form-footer{flex-wrap:wrap;gap:.5rem}
 .profile-tip-button{display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;margin-top:1rem;min-height:2.75rem;color:var(--color-primary);background:#8b5cf614;border:1px solid #8b5cf640}
 .profile-tip-button .icon{width:1.15rem;height:1.15rem}
 .chat-tip-button:hover,.profile-tip-button:hover{background:#8b5cf62b}

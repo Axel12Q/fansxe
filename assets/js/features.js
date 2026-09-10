@@ -45,7 +45,12 @@
         if (!approved) { if ($('post-visibility').value === 'subscribers') $('post-visibility').value = 'public'; if ($('story-visibility').value === 'subscribers') $('story-visibility').value = 'public'; }
         $('story-age-hint').innerHTML = hint.innerHTML;
     }
-    const badge = b => `<span class="achievement-icon achievement-${b.tone}">${ui.icon(b.icon)}</span>`;
+    const badge = b => {
+        const design=community.state.badgeDesigns?.[b.id];
+        const background=/^#[0-9a-f]{6}$/i.test(design?.background||'')?` style="background:${design.background}"`:'';
+        const image=/^[0-9a-f]{32}$/.test(design?.asset||'')?`<img src="/api/index.php?action=file&amp;id=${design.asset}" alt="" loading="lazy">`:ui.icon(b.icon);
+        return `<span class="achievement-icon achievement-${b.tone}"${background}>${image}</span>`;
+    };
     function renderBadges() {
         if (!$('profile-badges')) return;
         const selected = new URLSearchParams(location.search).get('user'); const id = selected === window.FansxeBoot?.selfId ? 'demo' : selected || 'demo';
