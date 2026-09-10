@@ -1,27 +1,43 @@
-name: Subir por SFTP automaticamente
-
+name: Validar y publicar Fansxe
 on:
   push:
-    branches:
-      - main
-
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: fansxe-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
-  deploy:
-    name: 🎉 Deploy SFTP
+  validate:
     runs-on: ubuntu-latest
-    env:
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
-    - name: 🚚 Descargando el codigo
-      uses: actions/checkout@v4
-    
-    - name: 📂 Subiendo por SFTP puro
-      uses: wangyucode/sftp-upload-action@v2.0.2
-      with:
-        host: access-5021305806.webspace-host.com
-        username: su81402
-        password: ${{ secrets.FTP_PASSWORD }}
-        port: 22
-        localDir: '.'
-        remoteDir: '/public'
-        exclude: '.git/**,.github/**'
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: corepack enable && corepack prepare pnpm@10.15.0 --activate
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: php tests/google-token.php .
+      - run: php tests/stripe-signature.php
+      - run: find server api -name '*.php' -print0 | xargs -0 -n1 php -l
+  deploy:
+    if: github.event_name == 'push'
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install paramiko==4.0.0
+      - name: Preparar, migrar y activar
+        env:
+          FANSXE_SSH_PASSWORD: ${{ secrets.IONOS_SSH_PASSWORD }}
+        run: |
+          python scripts/deploy.py --prepare | tee release.log
+          release=$(sed -n 's/^RELEASE=//p' release.log)
+          test -n "$release"
+          python scripts/deploy.py --activate "$release"

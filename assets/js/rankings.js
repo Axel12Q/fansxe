@@ -1,0 +1,21 @@
+(() => {
+ if(!window.FansxeBoot||document.body.dataset.page!=='inicio')return;
+ const ui=FansxeComponents,app=FansxeApp;
+ const trophy='<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3h8v6a4 4 0 0 1-8 0V3Zm0 2H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4m-4 2v5m-4 3h8m-7-3h6"/></svg>';
+ const button=document.createElement('button');button.type='button';button.className='ranking-launch';button.setAttribute('aria-label','Ver ranking de creadores y comunidad');button.innerHTML=trophy+'<span>Top Fansxe</span>';
+ const account=document.getElementById('account-link');
+ const actions=document.createElement('div');actions.className='home-heading-actions';
+ document.querySelector('.page-heading')?.append(actions);actions.append(button);if(account)actions.append(account);
+ document.getElementById('modals-slot').insertAdjacentHTML('beforeend',`<div id="rankingsModal" class="app-modal hidden"><div class="modal-backdrop" data-action="close-modal"></div><section id="rankingsModalContent" class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="ranking-title" tabindex="-1"><header class="ranking-hero"><button class="icon-button" data-action="close-modal" aria-label="Cerrar ranking">×</button><span class="ranking-emblem">${trophy}</span><p>LA COMUNIDAD BRILLA</p><h2 id="ranking-title">Top Fansxe</h2><p>Personas que inspiran. Apoyos que se sienten.</p></header><div class="ranking-tabs" role="tablist" aria-label="Clasificación"><button type="button" role="tab" aria-selected="true" data-ranking="creators">Top creadores</button><button type="button" role="tab" aria-selected="false" data-ranking="members">Comunidad estrella</button></div><p class="field-help ranking-period">Clasificación histórica · Hasta 20 perfiles</p><div id="ranking-list" role="tabpanel" aria-live="polite"></div><details class="ranking-rules"><summary>¿Cómo se calcula?</summary><p>Creadores: gemas recibidas en propinas confirmadas, ajustadas por devoluciones y disputas.</p><p>Comunidad: 50 puntos por Plus activo, 20 por cada creador distinto con suscripción pagada, 1 por Me gusta (máximo 100) y 3 por publicación comentada (máximo 50). Solo cuentan interacciones en publicaciones ajenas. Las pruebas gratuitas no suman.</p><p>No mostramos tus compras ni conversaciones. Las cuentas administrativas quedan fuera.</p></details></section></div>`);
+ let tab='creators',data=null,busy=false;
+ const list=document.getElementById('ranking-list');
+ function render(){
+  document.querySelectorAll('[data-ranking]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.ranking===tab)));
+  if(!data)return;
+  list.innerHTML=data[tab]?.length?data[tab].map((u,i)=>`<a class="ranking-row ${i<3?'ranking-podium':''}" href="${ui.profileUrl(u.id)}"><span class="ranking-position">${i===0?trophy:i+1}</span>${ui.avatar(u)}<span class="ranking-person"><strong>${ui.escape(u.name)} ${Number(u.plus)?'<span class="plus-badge">PLUS</span>':''}</strong><small>@${ui.escape(u.handle)}</small></span><span class="ranking-score">${Number(u.score).toLocaleString('es-MX')}<small>${tab==='creators'?'gemas':'puntos'}</small></span></a>`).join(''):`<div class="ranking-empty">${trophy}<h3>El próximo lugar puede ser tuyo</h3><p>${tab==='creators'?'Las primeras propinas confirmadas darán vida a este ranking.':'Comparte tu apoyo e interactúa con la comunidad para aparecer aquí.'}</p></div>`;
+  FansxeMedia.hydrate(list);
+ }
+ async function load(){if(busy)return;busy=true;list.innerHTML='<p class="ranking-empty" role="status">Cargando estrellas…</p>';try{const response=await fetch('/api/index.php?action=rankings');if(!response.ok)throw Error();data=await response.json();render();}catch{list.innerHTML='<p class="ranking-empty">No pudimos cargar el ranking. <button class="text-link" type="button" id="ranking-retry">Reintentar</button></p>';document.getElementById('ranking-retry').onclick=load;}finally{busy=false;}}
+ button.addEventListener('click',()=>{app.openModal('rankingsModal');load();});
+ document.querySelectorAll('[data-ranking]').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.ranking;render();}));
+})();

@@ -1,0 +1,73 @@
+CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(80) PRIMARY KEY, applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE IF NOT EXISTS users (
+ id CHAR(32) PRIMARY KEY, email VARCHAR(254) NOT NULL UNIQUE, handle VARCHAR(30) NOT NULL UNIQUE,
+ name VARCHAR(60) NOT NULL, password_hash VARCHAR(255) NOT NULL, role ENUM('user','admin') NOT NULL DEFAULT 'user',
+ bio VARCHAR(500) NOT NULL DEFAULT '', location VARCHAR(80) NOT NULL DEFAULT '', avatar_asset CHAR(32) NULL, cover_asset CHAR(32) NULL,
+ theme ENUM('light','dark') NOT NULL DEFAULT 'light', hidden_badges JSON NOT NULL DEFAULT '[]',
+ adult_declared_at TIMESTAMP NOT NULL, session_version INT NOT NULL DEFAULT 1, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS media (
+ id CHAR(32) PRIMARY KEY, owner_id CHAR(32) NOT NULL, mime VARCHAR(80) NOT NULL, name VARCHAR(200) NOT NULL,
+ size BIGINT UNSIGNED NOT NULL, purpose ENUM('draft','profile','post','message','story','document') NOT NULL DEFAULT 'draft',
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS follows (
+ follower_id CHAR(32) NOT NULL, creator_id CHAR(32) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY(follower_id,creator_id), FOREIGN KEY(follower_id) REFERENCES users(id) ON DELETE CASCADE,
+ FOREIGN KEY(creator_id) REFERENCES users(id) ON DELETE CASCADE, CHECK(follower_id <> creator_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS posts (
+ id CHAR(32) PRIMARY KEY, creator_id CHAR(32) NOT NULL, text TEXT NOT NULL, media JSON NOT NULL,
+ visibility ENUM('public','subscribers') NOT NULL, created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+ INDEX(created_at,id), FOREIGN KEY(creator_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS post_likes (
+ post_id CHAR(32) NOT NULL, user_id CHAR(32) NOT NULL, PRIMARY KEY(post_id,user_id),
+ FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS comments (
+ id CHAR(32) PRIMARY KEY, post_id CHAR(32) NOT NULL, user_id CHAR(32) NOT NULL, text VARCHAR(1000) NOT NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX(post_id,created_at),
+ FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS messages (
+ id CHAR(32) PRIMARY KEY, sender_id CHAR(32) NOT NULL, recipient_id CHAR(32) NOT NULL, text TEXT NOT NULL, media JSON NOT NULL,
+ created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), INDEX(recipient_id,created_at), INDEX(sender_id,created_at),
+ FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE CASCADE, FOREIGN KEY(recipient_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS notifications (
+ id CHAR(32) PRIMARY KEY, recipient_id CHAR(32) NOT NULL, actor_id CHAR(32) NOT NULL, kind VARCHAR(30) NOT NULL,
+ text VARCHAR(250) NOT NULL, read_at TIMESTAMP NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ INDEX(recipient_id,created_at), FOREIGN KEY(recipient_id) REFERENCES users(id) ON DELETE CASCADE,
+ FOREIGN KEY(actor_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS age_requests (
+ id CHAR(32) PRIMARY KEY, user_id CHAR(32) NOT NULL, document_id CHAR(32) NOT NULL,
+ status ENUM('pending','approved','changes','rejected') NOT NULL DEFAULT 'pending', note VARCHAR(1000) NOT NULL DEFAULT '',
+ submitted_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), reviewed_at TIMESTAMP NULL, reviewer_id CHAR(32) NULL,
+ INDEX(user_id,submitted_at), FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+ FOREIGN KEY(document_id) REFERENCES media(id), FOREIGN KEY(reviewer_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS stories (
+ id CHAR(32) PRIMARY KEY, creator_id CHAR(32) NOT NULL, text VARCHAR(1000) NOT NULL, media JSON NOT NULL,
+ visibility ENUM('public','subscribers') NOT NULL, created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), expires_at TIMESTAMP(6) NOT NULL,
+ INDEX(expires_at), FOREIGN KEY(creator_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS story_reactions (
+ story_id CHAR(32) NOT NULL, user_id CHAR(32) NOT NULL, liked BOOLEAN NOT NULL DEFAULT 0, seen BOOLEAN NOT NULL DEFAULT 0,
+ PRIMARY KEY(story_id,user_id), FOREIGN KEY(story_id) REFERENCES stories(id) ON DELETE CASCADE,
+ FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS subscriptions (
+ user_id CHAR(32) NOT NULL, creator_id CHAR(32) NOT NULL, expires_at TIMESTAMP NOT NULL,
+ PRIMARY KEY(user_id,creator_id), FOREIGN KEY(user_id) REFERENCES users(id), FOREIGN KEY(creator_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS wallet_ledger (
+ id CHAR(32) PRIMARY KEY, user_id CHAR(32) NOT NULL, amount_cents BIGINT NOT NULL, external_reference VARCHAR(150) NOT NULL UNIQUE,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS password_resets (
+ token_hash CHAR(64) PRIMARY KEY, user_id CHAR(32) NOT NULL, expires_at TIMESTAMP NOT NULL,
+ FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS rate_limits (bucket CHAR(64) PRIMARY KEY, attempts INT NOT NULL, expires_at BIGINT NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
