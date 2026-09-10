@@ -78,7 +78,7 @@ function real_id(string $id,array $u): string { return $id==='demo' ? $u['id'] :
 function client_id(string $id,array $u): string { return $id===$u['id'] ? 'demo' : $id; }
 function subscribed(string $creator,string $user): bool { return (bool)row('SELECT 1 FROM subscriptions WHERE user_id=? AND creator_id=? AND expires_at>NOW()',[$user,$creator]); }
 function readable(array $post,array $u): bool { return $post['creator_id']===$u['id'] || $post['visibility']==='public' || subscribed($post['creator_id'],$u['id']); }
-function can_message(string $to,string $from): bool { return $to!==$from && (bool)row('SELECT 1 FROM follows WHERE (follower_id=? AND creator_id=?) OR (follower_id=? AND creator_id=?)',[$to,$from,$from,$to]); }
+function can_message(string $to,string $from): bool { return $to!==$from && ((bool)row('SELECT 1 FROM follows WHERE (follower_id=? AND creator_id=?) OR (follower_id=? AND creator_id=?)',[$to,$from,$from,$to]) || (bool)row('SELECT id FROM gem_tips WHERE (buyer_id=? AND creator_id=?) OR (buyer_id=? AND creator_id=?) LIMIT 1',[$to,$from,$from,$to])); }
 function private_allowed(string $id): bool { return (row('SELECT status FROM age_requests WHERE user_id=? ORDER BY submitted_at DESC,id DESC LIMIT 1',[$id])['status']??'')==='approved'; }
 function notify_user(string $to,string $from,string $kind,string $text): void { if ($to!==$from) query('INSERT INTO notifications(id,recipient_id,actor_id,kind,text) VALUES(?,?,?,?,?)',[uid(),$to,$from,$kind,$text]); }
 function media_data(string $id): array { $m=row('SELECT id,mime,name FROM media WHERE id=?',[$id]); return $m ? ['id'=>$m['id'],'kind'=>str_starts_with($m['mime'],'image/')?'image':'video','name'=>$m['name']] : []; }

@@ -15,7 +15,7 @@ try {
  foreach(['data','store','community-store'] as $file)$html=str_replace('<script src="assets/js/'.$file.'.js" defer></script>','',$html);
  $html=str_replace('<script src="assets/js/media.js" defer></script>','<script src="assets/js/server-store.js" defer></script><script src="assets/js/media.js" defer></script>',$html);
  if($public)$html=str_replace('</body>','<script type="module" src="assets/js/google-auth.js"></script></body>',$html);
- if(!$public)$html=str_replace('</body>','<script src="assets/js/server-ui.js" defer></script><script src="assets/js/commerce.js" defer></script><script src="assets/js/highlights.js" defer></script><script src="assets/js/billing.js" defer></script><script src="assets/js/gem-social.js" defer></script><script src="assets/js/badge-admin.js" defer></script></body>',$html);
+ if(!$public)$html=str_replace('</body>','<script src="assets/js/server-ui.js" defer></script><script src="assets/js/commerce.js" defer></script><script src="assets/js/highlights.js" defer></script><script src="assets/js/billing.js" defer></script><script src="assets/js/gem-social.js" defer></script><script src="assets/js/badge-admin.js" defer></script><script src="assets/js/rankings.js" defer></script></body>',$html);
  $html=preg_replace_callback('#((?:src|href)=")(assets/[^"?]+\.(?:js|css))(\")#',static fn($m)=>$m[1].$m[2].'?v='.filemtime(dirname(__DIR__).'/'.$m[2]).$m[3],$html);
  header('Content-Type: text/html; charset=utf-8');echo $html;
 }catch(Throwable $e){error_log('Fansxe page: '.get_class($e));http_response_code(503);echo '<p>Estamos preparando Fansxe. Vuelve a intentarlo en unos minutos.</p>';}

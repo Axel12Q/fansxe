@@ -594,6 +594,29 @@ html[data-theme="dark"] #page-content[data-profile-accent]{--profile-frame:#1e29
 #attachmentReviewModal{padding:0;background:#080910f5}#attachmentReviewModalContent{background:#10121b;color:#fff;width:min(100vw,36rem);height:100dvh;max-height:100dvh;padding:1rem;border-radius:0;display:flex;flex-direction:column;gap:.5rem}
 #attachmentReviewModalContent .modal-heading{margin:0;flex-shrink:0}#attachment-review-media{flex:1;min-height:0;display:grid;place-items:center}#attachment-review-media img,#attachment-review-media video{width:100%;height:100%;min-height:0;object-fit:contain}#attachment-review-position{font-size:.75rem;overflow-wrap:anywhere}.review-navigation{display:flex;justify-content:space-between;gap:1rem}#attachmentReviewModalContent .form-footer{margin:0;flex-wrap:wrap;padding-bottom:env(safe-area-inset-bottom)}
 #chat-nav-handle{display:none}
+.tip-photo-label{display:inline-flex;gap:.4rem;align-items:center;margin:.75rem 0}
+#gem-tip-preview:empty{display:none}
+#gem-tip-preview img{max-height:9rem;object-fit:contain}
+.message-gem-tip + p{margin-top:.65rem;white-space:pre-wrap}
+.ranking-launch{display:inline-flex;align-items:center;gap:.4rem;flex-shrink:0;min-height:2.5rem;padding:.45rem .75rem;border:1px solid #c4a35b66;border-radius:.9rem;background:linear-gradient(120deg,#8b5cf61c,#eab30820);color:var(--color-dark);font-size:.75rem;font-weight:700}
+.ranking-launch .icon{width:1.25rem;height:1.25rem;color:#b88623}
+#rankingsModalContent{padding:0;overflow-y:auto;max-width:36rem;border-radius:1.5rem}
+.ranking-hero{position:relative;text-align:center;padding:1.5rem 1rem;background:radial-gradient(ellipse at 80% 0%,#b8862344,transparent 65%),linear-gradient(140deg,#292043,#18152c);color:#fff}
+.ranking-hero>.icon-button{position:absolute;right:.6rem;top:.6rem;color:#fff}
+.ranking-emblem{display:grid;place-items:center;margin:0 auto .75rem;width:4rem;height:4rem;border-radius:1.25rem;background:#fbbf2420;border:1px solid #fbbf2455;color:#fcd778;box-shadow:0 8px 28px #fbbf2420}
+.ranking-emblem .icon{width:2.5rem;height:2.5rem}
+.ranking-hero h2{font-size:2rem;font-weight:800;letter-spacing:-.05em}
+.ranking-hero p{font-size:.8rem;color:#e0d7ef}.ranking-hero>p:first-of-type{font-size:.65rem;letter-spacing:.2em;color:#e7c989}
+.ranking-tabs{display:flex;gap:.4rem;padding:1rem 1rem .25rem}.ranking-tabs button{flex:1;padding:.75rem .4rem;border-radius:.8rem;font-size:.8rem;font-weight:700;background:var(--color-bg);color:var(--color-muted)}
+.ranking-tabs button[aria-selected=true]{background:#8b5cf622;color:var(--color-primary);box-shadow:inset 0 0 0 1px #8b5cf640}
+.ranking-period{padding:0 1rem}.ranking-row{display:flex;gap:.65rem;align-items:center;padding:.85rem;margin:.5rem 1rem;border-radius:1rem;border:1px solid var(--color-border);transition:background .15s}.ranking-row:hover{background:#8b5cf614}
+.ranking-podium{background:linear-gradient(110deg,#8b5cf60d,#eab3080f);border-color:#c4a35b44}
+.ranking-position{width:1.5rem;flex:none;font-size:1rem;font-weight:800;color:var(--color-muted)}.ranking-position .icon{width:1.5rem;height:1.5rem;color:#b88623}
+.ranking-person{min-width:0;flex:1}.ranking-person strong{display:block;overflow-wrap:anywhere;font-size:.85rem}.ranking-person small,.ranking-score small{display:block;font-size:.7rem;color:var(--color-muted)}.ranking-person .plus-badge{margin-left:.25rem}
+.ranking-score{text-align:right;font-weight:800;color:var(--color-primary);font-size:.95rem}
+.ranking-empty{padding:2rem 1.5rem;text-align:center;color:var(--color-muted);font-size:.85rem}.ranking-empty>.icon{width:3rem;height:3rem;margin:0 auto 1rem;color:#b88623}.ranking-empty h3{font-weight:700;color:var(--color-dark);margin-bottom:.5rem}
+.ranking-rules{margin:1rem;padding:1rem;background:var(--color-bg);border-radius:1rem;font-size:.75rem;color:var(--color-muted)}.ranking-rules summary{cursor:pointer;color:var(--color-dark);font-weight:600}.ranking-rules p{margin-top:.7rem}
+@media(prefers-reduced-motion:reduce){.ranking-row{transition:none}}
 .achievement-icon img{display:block;width:100%;height:100%;object-fit:contain;border-radius:inherit}
 .badge-design-panel{margin:1.25rem}
 .badge-design-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,19rem),1fr));gap:1rem;margin-top:1.25rem}

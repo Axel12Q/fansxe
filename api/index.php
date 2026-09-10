@@ -9,6 +9,7 @@ require dirname(__DIR__).'/server/billing-events.php';
 try {
  start_session(); $action=$_GET['action']??'';
  if($_SERVER['REQUEST_METHOD']==='GET') {
+  if($action==='rankings'){require dirname(__DIR__).'/server/rankings.php';output(rankings());}
   if($action==='session')output(['csrf'=>$_SESSION['csrf'],'signedIn'=>viewer(false)!==null]);
   $u=viewer(false)??guest(); if($action==='file')serve_file($u,(string)($_GET['id']??''));
   if($action==='discover') {

@@ -16,7 +16,7 @@ function load(t, file, boot = fixture()) {
     let html = fs.readFileSync(path.join(root, file.split('?')[0]), 'utf8').replace('assets/js/auth.js','assets/js/server-auth.js');
     for (const name of ['data','store','community-store']) html = html.replace(`<script src="assets/js/${name}.js" defer></script>`, '');
     html = html.replace('<script src="assets/js/media.js" defer></script>', '<script src="assets/js/server-store.js" defer></script><script src="assets/js/media.js" defer></script>');
-    html = html.replace('</body>', '<script src="assets/js/server-ui.js" defer></script><script src="assets/js/commerce.js" defer></script><script src="assets/js/highlights.js" defer></script><script src="assets/js/billing.js" defer></script><script src="assets/js/gem-social.js" defer></script><script src="assets/js/badge-admin.js" defer></script></body>');
+    html = html.replace('</body>', '<script src="assets/js/server-ui.js" defer></script><script src="assets/js/commerce.js" defer></script><script src="assets/js/highlights.js" defer></script><script src="assets/js/billing.js" defer></script><script src="assets/js/gem-social.js" defer></script><script src="assets/js/badge-admin.js" defer></script><script src="assets/js/rankings.js" defer></script></body>');
     const errors = [], calls = [], vc = new VirtualConsole(); vc.on('jsdomError', e => errors.push(e.message));
     const dom = new JSDOM(html, { url: 'https://fansxe.com/'+file, runScripts: 'outside-only', virtualConsole: vc });
     t.after(() => dom.window.close());const w=dom.window;w.FansxeBoot=boot;w.tailwind={};w.scrollTo=()=>{};
@@ -167,8 +167,17 @@ test('chat tips show balance, require confirmation and keep a stable request key
  const c=load(t,'mensajes.html',boot);await tick();c.d.querySelector('[data-action="chat-select"]').click();await tick();
  assert.ok(c.d.querySelector('.chat-compose-row textarea'));assert.match(c.d.querySelector('.chat-gem-balance').textContent,/110/);
  c.d.querySelector('[data-chat-tip]').click();assert.equal(c.w.FansxeApp.activeModal,'gemTipModal');assert.ok(!c.calls.some(x=>x.url.includes('gem-tip')));
+ c.d.querySelector('#gem-tip-text').value='Gracias, me gustaría una foto';assert.ok(c.d.querySelector('#gem-tip-photo'));
  c.d.querySelector('#gem-tip-form').dispatchEvent(new c.w.Event('submit',{bubbles:true,cancelable:true}));await tick();
- const call=c.calls.find(x=>x.url.includes('gem-tip')),data=JSON.parse(call.options.body);assert.equal(data.gems,20);assert.equal(data.context,'chat');assert.equal(data.id,'other');assert.ok(data.requestKey);assert.deepEqual(c.errors,[]);
+ const call=c.calls.find(x=>x.url.includes('gem-tip')),data=JSON.parse(call.options.body);assert.equal(data.gems,20);assert.equal(data.context,'chat');assert.equal(data.id,'other');assert.equal(data.text,'Gracias, me gustaría una foto');assert.deepEqual(data.media,[]);assert.ok(data.requestKey);assert.deepEqual(c.errors,[]);
+});
+test('a tip conversation permits replies without a follow and displays the note',async t=>{
+ const boot=billingFixture();boot.data.creators.other={...boot.data.creators.demo,id:'other',name:'Other',privateAllowed:true};boot.state.conversations.other={userId:'other',messages:[{id:'gift',senderId:'other',text:'Una foto por favor',media:[],gemTip:{gems:20},createdAt:new Date().toISOString()}]};
+ const c=load(t,'mensajes.html',boot);await tick();assert.equal(c.w.FansxeStore.canMessage('other'),true);c.d.querySelector('[data-action="chat-select"]').click();await tick();assert.match(c.d.querySelector('#chat-messages').textContent,/Una foto por favor/);assert.match(c.d.querySelector('#chat-messages').textContent,/20 gemas/);assert.deepEqual(c.errors,[]);
+});
+test('home trophy loads separate creator and community rankings with Plus distinction',async t=>{
+ const c=load(t,'inicio.html',billingFixture());await tick();c.w.fetch=async()=>({ok:true,json:async()=>({creators:[{id:'other',name:'Creator',handle:'creator',score:100,plus:0}],members:[{id:'star',name:'Star',handle:'star',score:50,plus:1}]})});
+ c.d.querySelector('.ranking-launch').click();await tick();assert.equal(c.w.FansxeApp.activeModal,'rankingsModal');assert.match(c.d.querySelector('#ranking-list').textContent,/Creator/);assert.match(c.d.querySelector('#ranking-list').textContent,/100/);c.d.querySelector('[data-ranking="members"]').click();assert.match(c.d.querySelector('#ranking-list').textContent,/Star/);assert.ok(c.d.querySelector('#ranking-list .plus-badge'));assert.equal(c.d.querySelectorAll('nav .ranking-launch').length,0);assert.deepEqual(c.errors,[]);
 });
 test('badge administration previews colors, saves only on submit and restores defaults',async t=>{
  const boot=billingFixture();const c=load(t,'admin.html',boot);await tick();

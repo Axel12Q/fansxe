@@ -35,22 +35,27 @@ function gem_tip_send(array $u,array $d): bool {
  if(!preg_match('/^[a-zA-Z0-9-]{16,80}$/D',$key))fail('Referencia no válida.');
  $gems=filter_var($d['gems']??0,FILTER_VALIDATE_INT);$context=$d['context']??'profile';$post=$d['post']??null;
  if(!$gems||$gems<1||$gems>22000||!in_array($context,['profile','post','chat'],true))fail('Elige de 1 a 22,000 gemas.');
+ $text=str_value($d,'text',500);$attachments=$d['media']??[];
+ if(!is_array($attachments)||count($attachments)>1)fail('Adjunta como máximo una foto.');
  db()->beginTransaction();query('SELECT id FROM users WHERE id=? FOR UPDATE',[$u['id']]);
  $prior=row('SELECT * FROM gem_tips WHERE buyer_id=? AND request_key=?',[$u['id'],$key]);
- if($prior){if($prior['creator_id']!==$id||(int)$prior['gems']!==$gems||$prior['context']!==$context||$prior['post_id']!==$post)fail('Referencia ya utilizada.',409);db()->commit();return true;}
+ if($prior){
+  $sent=row('SELECT text,media FROM messages WHERE gem_tip_id=?',[$prior['id']]);
+  if($prior['creator_id']!==$id||(int)$prior['gems']!==$gems||$prior['context']!==$context||$prior['post_id']!==$post||($sent&&($sent['text']!==$text||array_column(json_value($sent['media']),'id')!==array_column($attachments,'id'))))fail('Referencia ya utilizada.',409);
+  db()->commit();return true;
+ }
  if($id===$u['id']||!row('SELECT id FROM users WHERE id=?',[$id])||!private_allowed($id))fail('Este perfil aún no puede recibir propinas.',403);
- if($context==='chat'&&!can_message($id,$u['id']))fail('Sigue a esta persona para enviarle una propina por chat.',403);
  if($context==='post'){$p=row('SELECT * FROM posts WHERE id=? AND creator_id=?',[$post,$id]);if(!$p||!readable($p,$u))fail('Publicación no disponible.',403);}else $post=null;
  if(gem_balance($u['id'])<$gems)fail('No tienes suficientes gemas. Recarga tu saldo.');
  $funds=query("SELECT o.id,o.gem_amount,COALESCE((SELECT SUM(f.gems) FROM gem_tip_funds f WHERE f.order_id=o.id),0) spent FROM billing_orders o JOIN billing_payments p ON p.order_id=o.id WHERE o.user_id=? AND o.kind='gems' AND p.status='paid' AND p.refunded=0 AND p.disputed=0 ORDER BY o.created_at,o.id",[$u['id']])->fetchAll();
  $remaining=$gems;$allocations=[];foreach($funds as $f){$take=min($remaining,max(0,(int)$f['gem_amount']-(int)$f['spent']));if($take){$allocations[]=[$f['id'],$take];$remaining-=$take;}if(!$remaining)break;}
  if($remaining)fail('Estas gemas todavía están pendientes de confirmación o de revisión del pago.');
+ $media=claim_media($attachments,$u,'message',1);
+ foreach($media as $attachment)if($attachment['kind']!=='image')fail('La propina admite una foto.');
  $tip=uid();query('INSERT INTO gem_tips(id,buyer_id,creator_id,gems,request_key,context,post_id) VALUES(?,?,?,?,?,?,?)',[$tip,$u['id'],$id,$gems,$key,$context,$post]);
  foreach($allocations as [$order,$amount])query('INSERT INTO gem_tip_funds(tip_id,order_id,gems) VALUES(?,?,?)',[$tip,$order,$amount]);
  query("INSERT INTO gem_ledger(id,user_id,amount,kind,request_key) VALUES(?,?,?,'tip',?)",[uid(),$u['id'],-$gems,'tip-'.$tip]);
- if($context==='chat'){
-  $message=uid();query("INSERT INTO messages(id,sender_id,recipient_id,text,media,gem_tip_id) VALUES(?,?,?,?,'[]',?)",[$message,$u['id'],$id,'Te envió una propina de '.$gems.' gemas.',$tip]);
+  $message=uid();query("INSERT INTO messages(id,sender_id,recipient_id,text,media,gem_tip_id) VALUES(?,?,?,?,?,?)",[$message,$u['id'],$id,$text,json_encode($media),$tip]);
   query("INSERT INTO notifications(id,recipient_id,actor_id,kind,text,message_id) VALUES(?,?,?,'message',?,?)",[uid(),$id,$u['id'],'te envió una propina de '.$gems.' gemas.',$message]);
- }else notify_user($id,$u['id'],'sale','te envió '.$gems.' gemas de propina.');
  db()->commit();return true;
 }

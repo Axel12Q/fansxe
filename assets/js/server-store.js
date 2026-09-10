@@ -5,7 +5,7 @@
     window.FansxeData = snapshot.data;
     const users = () => Object.values(FansxeData.creators), user = id => FansxeData.creators[id];
     const canRead = p => !!p && (p.creatorId === 'demo' || p.visibility === 'public' || !!snapshot.state.subscriptions[p.creatorId]);
-    const canMessage = id => id !== 'demo' && !!user(id) && (!!snapshot.state.following[id] || FansxeData.followers.includes(id));
+    const canMessage = id => id !== 'demo' && !!user(id) && (!!snapshot.state.following[id] || FansxeData.followers.includes(id) || snapshot.state.conversations[id]?.messages.some(m => m.gemTip));
     let queue = Promise.resolve();
     function write(action, data = {}, failure = false) {
         const work = async () => {
