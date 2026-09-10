@@ -45,7 +45,8 @@ function snapshot(array $u,array $options=[]): array {
   if($r['recipient_id']===$u['id']&&!$r['read_at'])$conversations[$id]['unreadCount']++;
   $reference=$r['story_id']?row('SELECT * FROM stories WHERE id=?',[$r['story_id']]):null;
   $preview=$reference&&story_available($reference,$u)?story_data($reference,$u):null;
-  $conversations[$id]['messages'][]=['id'=>$r['id'],'senderId'=>client_id($r['sender_id'],$u),'text'=>$r['text'],'media'=>json_value($r['media']),'createdAt'=>str_replace(' ','T',$r['created_at']).'Z','read'=>!!$r['read_at'],'storyReply'=>(bool)$r['story_reply'],'story'=>$preview];
+  $tip=!empty($r['gem_tip_id'])?row('SELECT gems FROM gem_tips WHERE id=?',[$r['gem_tip_id']]):null;
+  $conversations[$id]['messages'][]=['id'=>$r['id'],'senderId'=>client_id($r['sender_id'],$u),'text'=>$r['text'],'media'=>json_value($r['media']),'createdAt'=>str_replace(' ','T',$r['created_at']).'Z','read'=>!!$r['read_at'],'storyReply'=>(bool)$r['story_reply'],'story'=>$preview,'gemTip'=>$tip?['gems'=>(int)$tip['gems']]:null];
  }
  $notifications=[];$read=[];
  foreach(query('SELECT * FROM notifications WHERE recipient_id=? ORDER BY created_at DESC LIMIT 100',[$u['id']]) as $r) { $notifications[]=['id'=>$r['id'],'userId'=>client_id($r['actor_id'],$u),'kind'=>$r['kind'],'href'=>$r['kind']==='message'?'mensajes.html?user='.rawurlencode(client_id($r['actor_id'],$u)):($r['kind']==='payout'?'admin.html':null),'text'=>$r['text'],'time'=>date('d/m/Y H:i',strtotime($r['created_at']))]; if($r['read_at']) $read[$r['id']]=true; }

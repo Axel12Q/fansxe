@@ -1,0 +1,16 @@
+CREATE TABLE IF NOT EXISTS gem_tips (
+ id CHAR(32) PRIMARY KEY, buyer_id CHAR(32) NOT NULL, creator_id CHAR(32) NOT NULL,
+ gems INT UNSIGNED NOT NULL, request_key VARCHAR(80) NOT NULL,
+ context ENUM('profile','post','chat') NOT NULL, post_id CHAR(32) NULL,
+ created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), UNIQUE(buyer_id,request_key),
+ FOREIGN KEY(buyer_id) REFERENCES users(id) ON DELETE CASCADE,
+ FOREIGN KEY(creator_id) REFERENCES users(id) ON DELETE CASCADE,
+ FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS gem_tip_funds (
+ tip_id CHAR(32) NOT NULL, order_id CHAR(32) NOT NULL, gems INT UNSIGNED NOT NULL,
+ PRIMARY KEY(tip_id,order_id),
+ FOREIGN KEY(tip_id) REFERENCES gem_tips(id) ON DELETE CASCADE,
+ FOREIGN KEY(order_id) REFERENCES billing_orders(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS gem_tip_id CHAR(32) NULL;

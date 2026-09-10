@@ -26,7 +26,7 @@
         + dialog('storyViewerModal', 'Historia', '<div id="story-view"></div>', true)
         + dialog('storyViewsModal', 'Personas que vieron tu historia', '<div id="story-viewers"></div>') + dialog('deleteStoryModal', 'Eliminar historia', '<p>La historia dejará de estar disponible para todos.</p><div class="form-footer"><button class="button-secondary" data-action="close-modal">Cancelar</button><button class="button-primary" data-feature="confirm-delete-story">Eliminar historia</button></div>')
         + dialog('ageReviewModal', 'Revisar solicitud', '<div id="age-review"></div>', true));
-    const storyPicker = FansxeAttachments.create($('story-file'), $('story-preview'), app.notify, false, 1);
+    const storyPicker = FansxeAttachments.create($('story-file'), $('story-preview'), app.notify, false, 1, true);
     let agePicker;
     document.querySelectorAll('#sidebar-slot nav, #mobileDrawerContent nav').forEach(nav => {
         const a = document.createElement('a'); a.href = 'configuracion.html'; a.className = 'flex items-center gap-3 text-vip-gray hover:bg-vip-bg p-3 rounded-xl font-medium transition';

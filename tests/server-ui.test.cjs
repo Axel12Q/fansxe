@@ -16,7 +16,7 @@ function load(t, file, boot = fixture()) {
     let html = fs.readFileSync(path.join(root, file), 'utf8').replace('assets/js/auth.js','assets/js/server-auth.js');
     for (const name of ['data','store','community-store']) html = html.replace(`<script src="assets/js/${name}.js" defer></script>`, '');
     html = html.replace('<script src="assets/js/media.js" defer></script>', '<script src="assets/js/server-store.js" defer></script><script src="assets/js/media.js" defer></script>');
-    html = html.replace('</body>', '<script src="assets/js/server-ui.js" defer></script><script src="assets/js/commerce.js" defer></script><script src="assets/js/highlights.js" defer></script><script src="assets/js/billing.js" defer></script></body>');
+    html = html.replace('</body>', '<script src="assets/js/server-ui.js" defer></script><script src="assets/js/commerce.js" defer></script><script src="assets/js/highlights.js" defer></script><script src="assets/js/billing.js" defer></script><script src="assets/js/gem-social.js" defer></script></body>');
     const errors = [], calls = [], vc = new VirtualConsole(); vc.on('jsdomError', e => errors.push(e.message));
     const dom = new JSDOM(html, { url: 'https://fansxe.com/'+file, runScripts: 'outside-only', virtualConsole: vc });
     t.after(() => dom.window.close());const w=dom.window;w.FansxeBoot=boot;w.tailwind={};w.scrollTo=()=>{};
@@ -92,7 +92,7 @@ test('background message reads do not show loading feedback',async t=>{
  resolve({ok:true,json:async()=>({ok:true})});await request;
 });
 
-function billingFixture(){const b=fixture();b.billing={test:true,currency:'MXN',commission:15,plusPrice:19900,plusOwned:false,price:9900,trialDays:7,available:0,balance:0,gems:0,gemPackages:[{id:'spark',gems:100,amount:3900,label:'Destello'},{id:'glow',gems:550,amount:9900,label:'Resplandor'},{id:'galaxy',gems:1200,amount:19900,label:'Galaxia'}],sales:[],totals:{sales:0,gross:0,net:0,commission:0,processing:0},withdrawals:[],subscriptions:[],movements:{},marketingEmail:false};return b;}
+function billingFixture(){const b=fixture();b.billing={test:true,currency:'MXN',commission:15,plusPrice:19900,plusOwned:false,price:9900,trialDays:7,available:0,balance:0,gems:0,gemPackages:[{id:'mini',gems:25,amount:1000,label:'Chispa'},{id:'spark',gems:110,amount:2900,label:'Destello'},{id:'shine',gems:220,amount:4900,label:'Brillo'},{id:'glow',gems:500,amount:9900,label:'Resplandor'},{id:'galaxy',gems:1100,amount:19900,label:'Galaxia'},{id:'nova',gems:2500,amount:39900,label:'Nova'},{id:'cosmos',gems:5500,amount:79900,label:'Cosmos'},{id:'nebula',gems:11000,amount:139900,label:'Nebulosa'},{id:'universe',gems:22000,amount:249900,label:'Universo'}],sales:[],totals:{sales:0,gross:0,net:0,commission:0,processing:0},withdrawals:[],subscriptions:[],movements:{},marketingEmail:false};return b;}
 test('Stripe Plus checkout clearly states one-time purchase and requires confirmation',async t=>{
  const c=load(t,'gemas.html',billingFixture());await tick();assert.match(c.d.querySelector('#page-content').textContent,/Pago único/);assert.ok(!c.d.querySelector('[data-commerce="recharge"]'));
  c.d.querySelector('[data-billing="plus"]').click();assert.equal(c.w.FansxeApp.activeModal,'billingModal');assert.ok(!c.calls.some(x=>x.url.includes('stripe-checkout')));c.d.querySelector('#billing-confirm').click();await tick();const call=c.calls.find(x=>x.url.includes('stripe-checkout'));assert.equal(JSON.parse(call.options.body).kind,'plus');assert.deepEqual(c.errors,[]);
@@ -107,7 +107,7 @@ test('Stripe creator price is in MXN and trial controls remain locked without ap
 test('age-approved creator controls unlock and gem recharge packages return',async t=>{
  const boot=billingFixture();boot.data.creators.demo.privateAllowed=true;boot.community.requests=[{id:'age1',userId:'demo',status:'approved'}];
  const profile=load(t,'perfil.html',boot);await tick();profile.d.querySelector('[data-action="edit-profile"]').click();assert.equal(profile.d.querySelector('[name="trialDays"]').disabled,false);assert.equal(profile.d.querySelector('[name="subscriptionMxn"]').disabled,false);
- const gemas=load(t,'gemas.html',boot);await tick();assert.equal(gemas.d.querySelectorAll('[data-billing="gems"]').length,3);assert.match(gemas.d.querySelector('#page-content').textContent,/Recargar gemas/);assert.deepEqual(profile.errors,[]);assert.deepEqual(gemas.errors,[]);
+ const gemas=load(t,'gemas.html',boot);await tick();assert.equal(gemas.d.querySelectorAll('[data-billing="gems"]').length,9);assert.match(gemas.d.querySelector('#page-content').textContent,/Recargar gemas/);assert.deepEqual(profile.errors,[]);assert.deepEqual(gemas.errors,[]);
 });
 test('private post state distinguishes unavailable subscriptions from a subscribable creator', async t => {
  const makeBoot = privateAllowed => { const boot=billingFixture();boot.data.creators.other={...boot.data.creators.demo,id:'other',name:'Other creator',handle:'other',privateAllowed,creatorStatus:'none',subscriptionMxn:9900};boot.feed.posts=[{id:'private-post',creatorId:'other',text:'Contenido exclusivo',media:[],visibility:'subscribers',type:'texto',likes:0,comments:[],createdAt:Date.now()}];return boot; };
@@ -129,9 +129,9 @@ test('activity email preference is persisted through the authenticated API',asyn
 
 test('Stripe keeps Plus profile controls and comments link to the actual author photo',async t=>{
  const boot=billingFixture();boot.data.creators.demo.plus=true;boot.data.creators.demo.profileAccent='ocean';boot.data.creators.demo.profileBorder='double';boot.data.creators.demo.avatar='/avatar-test.png';
- const c=load(t,'perfil.html',boot);await tick();c.d.querySelector('[data-action="edit-profile"]').click();
- assert.equal(c.d.querySelector('#profile-accent').disabled,false);assert.equal(c.d.querySelector('#profile-accent').value,'ocean');
- assert.equal(c.d.querySelector('#profile-border').selectedOptions[0].textContent,'Satinado');assert.equal(c.d.querySelector('#page-content').dataset.profileAccent,'ocean');
+ const c=load(t,'perfil.html',boot);await tick();c.d.querySelector('[data-action="edit-profile"]').click();assert.equal(c.d.querySelector('#plus-style-fields'),null);c.w.FansxeApp.closeModal();c.d.querySelector('[data-plus-style]').click();
+ assert.equal(c.d.querySelector('#plus-accent').disabled,false);assert.equal(c.d.querySelector('#plus-accent').value,'ocean');
+ assert.equal(c.d.querySelector('#plus-border').selectedOptions[0].textContent,'Satinado');assert.equal(c.d.querySelector('#page-content').dataset.profileAccent,'ocean');
  assert.equal(c.d.querySelectorAll('nav a[href="creador.html"]').length,2);
  const box=c.d.createElement('div');box.innerHTML=c.w.FansxeComponents.comment({userId:'demo',text:'Hello'});
  assert.equal(box.querySelectorAll('a[href="perfil.html?user=demo"]').length,2);assert.equal(box.querySelector('img').getAttribute('src'),'/avatar-test.png');assert.deepEqual(c.errors,[]);
@@ -141,4 +141,12 @@ test('own story heart is interactive without leaking clicks to the page',async t
  const c=load(t,'inicio.html',boot);await tick();c.d.querySelector('[data-feature="view-stories"]').click();
  assert.equal(c.d.querySelector('#story-like').disabled,false);assert.equal(c.d.querySelector('#story-like').dataset.feature,'story-like');
  c.d.querySelector('#story-like').click();await tick();assert.ok(c.calls.some(x=>x.url.includes('action=story-like')));assert.deepEqual(c.errors,[]);
+});
+test('chat tips show balance, require confirmation and keep a stable request key',async t=>{
+ const boot=billingFixture();boot.billing.gems=110;boot.data.creators.other={...boot.data.creators.demo,id:'other',name:'Other',privateAllowed:true};boot.state.following.other=true;boot.state.conversations.other={userId:'other',messages:[]};
+ const c=load(t,'mensajes.html',boot);await tick();c.d.querySelector('[data-action="chat-select"]').click();await tick();
+ assert.ok(c.d.querySelector('.chat-compose-row textarea'));assert.match(c.d.querySelector('.chat-gem-balance').textContent,/110/);
+ c.d.querySelector('[data-chat-tip]').click();assert.equal(c.w.FansxeApp.activeModal,'gemTipModal');assert.ok(!c.calls.some(x=>x.url.includes('gem-tip')));
+ c.d.querySelector('#gem-tip-form').dispatchEvent(new c.w.Event('submit',{bubbles:true,cancelable:true}));await tick();
+ const call=c.calls.find(x=>x.url.includes('gem-tip')),data=JSON.parse(call.options.body);assert.equal(data.gems,20);assert.equal(data.context,'chat');assert.equal(data.id,'other');assert.ok(data.requestKey);assert.deepEqual(c.errors,[]);
 });

@@ -6,6 +6,11 @@ function mutate(string $action,array $d,array $u): mixed {
  if(in_array($action,['message-read','highlight-save','highlight-delete'],true))return social_action($action,$d,$u);
  $id=real_id((string)($d['id']??''),$u);
  switch($action) {
+ case 'profile-style':
+  if(!$u['plus_owned']&&(!$u['plus_expires_at']||strtotime($u['plus_expires_at'])<=time()))fail('La personalización requiere Plus.',403);
+  $accent=$d['accent']??'';$border=$d['border']??'';
+  if(!in_array($accent,['purple','rose','ocean','amber'],true)||!in_array($border,['soft','satin','glow'],true))fail('Estilo no disponible.');
+  query('UPDATE users SET profile_accent=?,profile_border=? WHERE id=?',[$accent,$border,$u['id']]);return true;
  case 'follow':
   if($id===$u['id'] || !row('SELECT id FROM users WHERE id=?',[$id])) fail('Perfil no disponible.');
   $has=row('SELECT 1 FROM follows WHERE follower_id=? AND creator_id=?',[$u['id'],$id]);

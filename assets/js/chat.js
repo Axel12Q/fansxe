@@ -38,7 +38,7 @@
         const target = $('chat-messages');
         const nearEnd = target.scrollHeight - target.scrollTop - target.clientHeight < 100;
         const key=JSON.stringify(conversation?.messages.map(({read,...message})=>message));if(key===messageKey){markRead();return;}messageKey=key;
-        target.innerHTML = conversation?.messages.length ? conversation.messages.map(m => `<article class="message-bubble ${m.senderId === 'demo' ? 'message-own' : 'message-incoming'}">${m.storyReply ? storyPreview(m.story) : ''}<p>${ui.richText(m.text)}</p>${ui.media(m.media)}<small>${ui.escape(new Date(m.createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }))}${window.FansxeBoot ? '' : ' · Guardado localmente'}</small></article>`).join('') : '<div class="chat-start"><span class="empty-icon">♡</span><h3>Comienza la conversación</h3><p>Envía un saludo, una foto o un video.</p></div>';
+        target.innerHTML = conversation?.messages.length ? conversation.messages.map(m => `<article class="message-bubble ${m.senderId === 'demo' ? 'message-own' : 'message-incoming'}">${m.storyReply ? storyPreview(m.story) : ''}${m.gemTip ? `<div class="message-gem-tip">${ui.icon('gem')}<span>${ui.number(m.gemTip.gems)} gemas · Propina</span></div>` : `<p>${ui.richText(m.text)}</p>`}${ui.media(m.media)}<small>${ui.escape(new Date(m.createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }))}${window.FansxeBoot ? '' : ' · Guardado localmente'}</small></article>`).join('') : '<div class="chat-start"><span class="empty-icon">♡</span><h3>Comienza la conversación</h3><p>Envía un saludo, una foto o un video.</p></div>';
         markRead();
         const allowed = store.canMessage(active);
         $('chat-permission').hidden = allowed;
@@ -59,10 +59,11 @@
         $('chat-root').classList.add('chat-selected');
         $('chat-detail').innerHTML = `<header class="chat-heading"><button class="icon-button chat-back" data-action="chat-back" aria-label="Volver a conversaciones">←</button><a href="${ui.profileUrl(id)}" class="author-link">${ui.avatar(user)}<span class="conversation-summary"><strong>${ui.escape(user.name)}</strong><small>@${ui.escape(user.handle)}</small></span></a></header><p class="chat-local-note">Chat de prueba · Los mensajes y archivos se guardan en este navegador.</p><div id="chat-messages" class="chat-messages" role="log" aria-label="Historial de mensajes" aria-live="polite"></div><p id="chat-permission" class="demo-banner" hidden>Para enviar mensajes, sigue a esta persona o espera a que te siga.</p><form id="chat-form" class="chat-form"><label class="sr-only" for="chat-text">Mensaje</label><textarea id="chat-text" name="text" class="text-field" rows="2" maxlength="3000" placeholder="Escribe un mensaje..."></textarea><div class="chat-send-tools"><label for="chat-file" class="attachment-button">${ui.icon('photo')} Foto / video</label><input id="chat-file" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" multiple><button type="submit" class="button-primary" aria-label="Enviar mensaje">${ui.icon('send')}</button></div><p class="field-help">Hasta 4 archivos · Fotos de 8 MB · Videos de 25 MB</p><div id="chat-preview" class="attachment-preview"></div></form>`;
         $('chat-text').value = drafts.get(id) || '';
-        picker = FansxeAttachments.create($('chat-file'), $('chat-preview'), options.notify);
+        picker = FansxeAttachments.create($('chat-file'), $('chat-preview'), options.notify, false, 4, true);
         $('chat-form').addEventListener('submit', send);
         $('chat-text').addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); $('chat-form').requestSubmit(); } });
         renderList(); renderMessages(true); FansxeMedia.hydrate($('chat-detail'));
+        window.dispatchEvent(new CustomEvent('fansxe:chat-opened'));
     }
     async function send(event) {
         event.preventDefault();

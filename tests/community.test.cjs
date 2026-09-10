@@ -192,7 +192,9 @@ test('text, photo and video stories persist for 24 hours and unlock the first-st
     await settled(() => c.community.stories().some(s => s.creatorId === 'demo') && !c.w.FansxeApp.busy);
     for (const file of [photo(), video()]) {
         const count = c.community.state.stories.length;
-        c.click('[data-feature="create-story"]'); c.select('#story-file', file); c.submit('#story-form');
+        c.click('[data-feature="create-story"]'); c.select('#story-file', file);
+        assert.equal(c.d.querySelectorAll('#story-preview .attachment-item').length,0);
+        c.click('#attachment-review-accept');await settled(()=>c.d.querySelectorAll('#story-preview .attachment-item').length===1);c.submit('#story-form');
         await settled(() => c.community.state.stories.length === count + 1 && !c.w.FansxeApp.busy);
     }
     const own = c.community.stories().filter(s => s.creatorId === 'demo');

@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__.'/stripe.php';
 require_once __DIR__.'/billing-mail.php';
+require_once __DIR__.'/gem-tips.php';
 function billing_available(string $user): int {
  $earned=(int)query("SELECT COALESCE(SUM(p.net),0) FROM billing_payments p JOIN billing_orders o ON o.id=p.order_id WHERE o.creator_id=? AND p.status='paid' AND p.available_at<=?",[$user,time()])->fetchColumn();
  $reserved=(int)query("SELECT COALESCE(SUM(amount),0) FROM billing_withdrawals WHERE user_id=? AND status IN ('pending','paid')",[$user])->fetchColumn();return $earned-$reserved;
@@ -16,7 +17,12 @@ function billing_state(array $u): array {
  $audience=row("SELECT COUNT(*) total,COALESCE(SUM(status='active'),0) active,COALESCE(SUM(status='trialing'),0) trials,COALESCE(SUM(status IN ('active','trialing') AND cancel_at_end=0),0) renewing FROM billing_subscriptions WHERE creator_id=?",[$u['id']]);
  $movements=$admin?row('SELECT COUNT(*) payments,COALESCE(SUM(gross),0) gross,COALESCE(SUM(stripe_fee),0) processing,COALESCE(SUM(platform_fee),0) commission,COALESCE(SUM(refunded),0) refunded FROM billing_payments'):null;
  $gems=(int)query('SELECT COALESCE(SUM(amount),0) FROM gem_ledger WHERE user_id=?',[$u['id']])->fetchColumn();
- return ['test'=>true,'currency'=>'MXN','commission'=>15,'plusPrice'=>19900,'plusOwned'=>(bool)($u['plus_owned']??false),'price'=>(int)($u['subscription_mxn']??9900),'trialDays'=>(int)($u['trial_days']??0),'available'=>max(0,billing_available($u['id'])),'balance'=>billing_available($u['id']),'gems'=>$gems,'gemPackages'=>[['id'=>'spark','gems'=>100,'amount'=>3900,'label'=>'Destello'],['id'=>'glow','gems'=>550,'amount'=>9900,'label'=>'Resplandor'],['id'=>'galaxy','gems'=>1200,'amount'=>19900,'label'=>'Galaxia']],'sales'=>$sales,'totals'=>$totals,'withdrawals'=>$withdrawals,'subscriptions'=>$subs,'subscribers'=>$subscribers,'audience'=>$audience,'activityEmail'=>(bool)($u['activity_email']??true),'movements'=>$movements,'marketingEmail'=>(bool)($u['marketing_email']??false)];
+ $tips=$admin?gem_tip_rows():gem_tip_rows($u['id']);
+ $tipTotals=['count'=>count($tips),'grossGems'=>array_sum(array_column($tips,'gross')),'feeGems'=>array_sum(array_column($tips,'fee')),'netGems'=>array_sum(array_column($tips,'net'))];
+ $tipRows=$admin?gem_tip_rows():$tips;
+ foreach(array_slice($tipRows,0,100) as $t)$sales[]=['creator_id'=>$t['creator_id'],'buyer_id'=>$t['buyer_id'],'kind'=>'gem-tip','gems'=>(int)$t['gems'],'net'=>$t['net'],'gross'=>$t['gross'],'platform_fee'=>$t['fee'],'stripe_fee'=>0,'status'=>'paid','available_at'=>$t['available_at'],'refunded'=>0,'charge_id'=>'Propina · '.$t['gems'].' gemas','created_at'=>$t['created_at']];
+ usort($sales,fn($a,$b)=>strcmp($b['created_at'],$a['created_at']));$sales=array_slice($sales,0,100);
+ return ['test'=>true,'currency'=>'MXN','commission'=>15,'plusPrice'=>19900,'plusOwned'=>(bool)($u['plus_owned']??false),'price'=>(int)($u['subscription_mxn']??9900),'trialDays'=>(int)($u['trial_days']??0),'available'=>max(0,billing_available($u['id'])),'balance'=>billing_available($u['id']),'gems'=>$gems,'gemPackages'=>gem_packages(),'sales'=>$sales,'totals'=>$totals,'tipTotals'=>$tipTotals,'withdrawals'=>$withdrawals,'subscriptions'=>$subs,'subscribers'=>$subscribers,'audience'=>$audience,'activityEmail'=>(bool)($u['activity_email']??true),'movements'=>$movements,'marketingEmail'=>(bool)($u['marketing_email']??false)];
 }
 function billing_customer(array $u): string {
  $found=row('SELECT stripe_id FROM billing_customers WHERE user_id=?',[$u['id']]);if($found)return $found['stripe_id'];
@@ -27,7 +33,7 @@ function billing_checkout(array $u,array $d): array {
  $kind=$d['kind']??'';$creator=null;$trial=0;$price=19900;
  if(!in_array($kind,['subscription','plus','tip','gems'],true))fail('Compra no disponible.');
  if($kind==='gems') {
-  $packages=['spark'=>[100,3900],'glow'=>[550,9900],'galaxy'=>[1200,19900]];$pack=$packages[$d['package']??'']??null;
+  $packages=array_column(gem_packages(),null,'id');$selected=$packages[$d['package']??'']??null;$pack=$selected?[$selected['gems'],$selected['amount']]:null;
   if(!$pack)fail('Paquete de gemas no disponible.');$creator=null;$price=$pack[1];$trial=0;
  }
  if($kind==='plus'&&$u['plus_owned'])fail('Ya tienes Plus.');
@@ -61,6 +67,7 @@ function billing_checkout(array $u,array $d): array {
 function billing_action(string $action,array $d,array $u): mixed {
  if(!billing_enabled())fail('Los pagos están en preparación.',503);
  limited('billing:'.$u['id'],40,60);
+ if($action==='gem-tip')return gem_tip_send($u,$d);
  if($action==='stripe-checkout')return billing_checkout($u,$d);
  if($action==='stripe-sync') {
   $o=row('SELECT * FROM billing_orders WHERE stripe_session=? AND user_id=?',[$d['session']??'',$u['id']]);if(!$o)fail('Compra no disponible.',404);

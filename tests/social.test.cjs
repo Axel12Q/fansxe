@@ -128,9 +128,11 @@ test('chat permits followers OR followed users, rejects unrelated users and pers
     c.d.querySelector('#chat-text').value = '¡Hola Luna!'; submit(c, '#chat-form'); await flush();
     assert.equal(c.w.FansxeStore.state.conversations.luna.messages.length, 1);
     selectFile(c, '#chat-file', new File([new Uint8Array([137,80,78,71,13,10,26,10,0])], 'chat.png', { type: 'image/png' }));
+    assert.equal(c.d.querySelectorAll('#chat-preview .attachment-item').length,0);click(c,'#attachment-review-accept');await flush();
     submit(c, '#chat-form'); await flush();
     assert.equal(c.w.FansxeStore.state.conversations.luna.messages[1].media[0].kind, 'image');
     selectFile(c, '#chat-file', new File([new Uint8Array([0,0,0,20,102,116,121,112,109,112,52,50])], 'chat.mp4', { type: 'video/mp4' }));
+    click(c,'#attachment-review-accept');await flush();
     submit(c, '#chat-form'); await flush();
     assert.equal(c.w.FansxeStore.state.conversations.luna.messages[2].media[0].kind, 'video');
     const next = load('mensajes.html', '?user=luna', c.snapshot(), c.w.indexedDB); await flush();

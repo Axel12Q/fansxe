@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
-const GEM_PACKAGES=['spark'=>['gems'=>100,'usd'=>2],'glow'=>['gems'=>550,'usd'=>10],'galaxy'=>['gems'=>1200,'usd'=>20]];
+const GEM_PACKAGES=[
+ 'mini'=>['gems'=>25,'usd'=>.5,'label'=>'Chispa'],
+ 'spark'=>['gems'=>110,'usd'=>1.5,'label'=>'Destello'],
+ 'shine'=>['gems'=>220,'usd'=>2.5,'label'=>'Brillo'],
+ 'glow'=>['gems'=>500,'usd'=>5,'label'=>'Resplandor'],
+ 'galaxy'=>['gems'=>1100,'usd'=>10,'label'=>'Galaxia'],
+ 'nova'=>['gems'=>2500,'usd'=>20,'label'=>'Nova'],
+ 'cosmos'=>['gems'=>5500,'usd'=>38,'label'=>'Cosmos'],
+ 'nebula'=>['gems'=>11000,'usd'=>65,'label'=>'Nebulosa'],
+ 'universe'=>['gems'=>22000,'usd'=>110,'label'=>'Universo']
+];
 function commission_percent(): int { return max(0,min(30,(int)(config()['commission_percent']??5))); }
 function gem_balance(string $id): int { return (int)query('SELECT COALESCE(SUM(amount),0) FROM gem_ledger WHERE user_id=?',[$id])->fetchColumn(); }
 function creator_available(string $id): int {
