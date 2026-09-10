@@ -41,7 +41,7 @@
     }
     function render(){
         renderBalance();chatTools();
-        const own=document.querySelector('[data-action="edit-profile"]');if(own&&!document.querySelector('[data-plus-style]'))document.querySelector('.profile-actions')?.insertAdjacentHTML('beforeend','<button class="button-secondary profile-plus-button" data-plus-style>✦ Personalizar Plus</button>');
+        const own=document.querySelector('[data-action="edit-profile"]');if(own&&!document.querySelector('[data-plus-style]'))document.querySelector('.profile-actions')?.insertAdjacentHTML('beforeend','<button class="button-secondary profile-plus-button" data-plus-style>✦ Plus</button>');
         document.querySelectorAll('#sidebar-slot nav,#mobileDrawerContent nav').forEach(nav=>{if(!nav.querySelector('.plus-nav-link'))nav.insertAdjacentHTML('beforeend','<a class="commerce-nav plus-nav-link" href="gemas.html#plus">✦ <span>Fansxe Plus</span></a>');});
         const plus=document.querySelector('.plus-card');if(plus)plus.id='plus';
         const packs=store.billing.gemPackages||[],base=packs[0];document.querySelectorAll('.gem-package').forEach((card,i)=>{if(card.querySelector('.package-offer')||!packs[i]||!base)return;const p=packs[i],saving=Math.floor((1-(p.amount/p.gems)/(base.amount/base.gems))*100);card.insertAdjacentHTML('beforeend',`<p class="package-offer">${saving>0?`${saving}% menos por gema`:'Empieza a tu ritmo'}</p><small class="package-unit">${(p.amount/p.gems/100).toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:3})} MXN / gema</small>`);});

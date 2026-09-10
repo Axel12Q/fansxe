@@ -226,7 +226,7 @@
                 try { const source = user[field + 'Asset'] ? await media.url(user[field + 'Asset']) : user[field]; if (source) { $('modalImgViewer').src = source; $('modalImgViewer').alt = 'Foto de ' + user.name; window.FansxeLoading?.image($('modalImgViewer')); openModal('imageModal'); } } catch (error) { notify(error.message); } break;
             }
             case 'share-profile':
-                try { await navigator.clipboard.writeText(new URL(window.FansxeBoot && userId === 'demo' ? 'perfil.html?user=' + FansxeBoot.selfId : ui.profileUrl(userId), location.href).href); notify('¡Enlace copiado!'); } catch { notify('No se pudo copiar. Puedes copiar la dirección del navegador.'); } break;
+                try { await navigator.clipboard.writeText(new URL(window.FansxeBoot && userId === 'demo' ? 'perfil.html?user=' + FansxeBoot.selfId : ui.profileUrl(userId), location.href).href); notify('Compartir · ¡Enlace copiado!'); } catch { notify('No se pudo copiar. Puedes copiar la dirección del navegador.'); } break;
             case 'message':
                 if (!store.canMessage(userId)) notify('Para conversar, sigue a esta persona o espera a que te siga.');
                 else if ((window.FansxeBoot ? await store.startConversation(userId) : store.startConversation(userId))) location.href = `mensajes.html?user=${encodeURIComponent(userId)}`;
