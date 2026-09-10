@@ -600,6 +600,8 @@ html[data-theme="dark"] #page-content[data-profile-accent]{--profile-frame:#1e29
 .message-gem-tip + p{margin-top:.65rem;white-space:pre-wrap}
 .ranking-launch{display:inline-flex;align-items:center;gap:.4rem;flex-shrink:0;min-height:2.5rem;padding:.45rem .75rem;border:1px solid #c4a35b66;border-radius:.9rem;background:linear-gradient(120deg,#8b5cf61c,#eab30820);color:var(--color-dark);font-size:.75rem;font-weight:700}
 .ranking-launch .icon{width:1.25rem;height:1.25rem;color:#b88623}
+.home-heading-actions{display:flex;align-items:center;gap:.5rem;margin-left:auto;flex-shrink:0}
+.home-heading-actions #account-link{display:flex;align-items:center;flex-shrink:0}
 #rankingsModalContent{padding:0;overflow-y:auto;max-width:36rem;border-radius:1.5rem}
 .ranking-hero{position:relative;text-align:center;padding:1.5rem 1rem;background:radial-gradient(ellipse at 80% 0%,#b8862344,transparent 65%),linear-gradient(140deg,#292043,#18152c);color:#fff}
 .ranking-hero>.icon-button{position:absolute;right:.6rem;top:.6rem;color:#fff}
