@@ -46,7 +46,6 @@
         const plus=document.querySelector('.plus-card');if(plus)plus.id='plus';
         const packs=store.billing.gemPackages||[],base=packs[0];document.querySelectorAll('.gem-package').forEach((card,i)=>{if(card.querySelector('.package-offer')||!packs[i]||!base)return;const p=packs[i],saving=Math.floor((1-(p.amount/p.gems)/(base.amount/base.gems))*100);card.insertAdjacentHTML('beforeend',`<p class="package-offer">${saving>0?`${saving}% menos por gema`:'Empieza a tu ritmo'}</p><small class="package-unit">${(p.amount/p.gems/100).toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:3})} MXN / gema</small>`);});
         if(plus&&!document.querySelector('.package-comparison'))document.querySelector('.gem-packages')?.insertAdjacentHTML('afterend','<p class="field-help package-comparison">Ahorro por gema comparado con el paquete más pequeño. Precios en MXN · Sin suscripción.</p>');
-        if(document.body.dataset.page==='inicio'&&!$('home-plus-invite'))$('story-shelf')?.insertAdjacentHTML('afterend','<a id="home-plus-invite" class="plus-invite" href="gemas.html#plus"><span>✦ Fansxe Plus</span><strong>Haz tuyo tu perfil</strong><small>Colores, acabados e insignia · Descúbrelo →</small></a>');
     }
     document.addEventListener('click',ev=>{
         const b=ev.target.closest('[data-plus-style],[data-chat-tip],[data-tip-preset],#chat-nav-handle');if(!b)return;
