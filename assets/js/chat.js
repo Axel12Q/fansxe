@@ -8,6 +8,22 @@
     }
     const drafts = new Map();
     const $ = id => document.getElementById(id);
+    function fitViewport() {
+        const selected = !!$('chat-root')?.classList.contains('chat-selected');
+        const mobile = window.innerWidth <= 767;
+        document.body.classList.toggle('chat-viewport-active', selected && mobile);
+        if (!selected || !mobile) return;
+        const viewport = window.visualViewport;
+        const height = viewport?.height || window.innerHeight;
+        const top = viewport?.offsetTop || 0;
+        document.body.style.setProperty('--chat-visible-height', height + 'px');
+        document.body.style.setProperty('--chat-visible-top', top + 'px');
+        document.body.style.setProperty('--chat-keyboard-bottom', Math.max(0, window.innerHeight - height - top) + 'px');
+    }
+    window.addEventListener('resize', fitViewport);
+    window.visualViewport?.addEventListener('resize', fitViewport);
+    window.visualViewport?.addEventListener('scroll', fitViewport);
+    window.addEventListener('fansxe:chat-opened', fitViewport);
     function people(query = '') {
         const matches = store.users().filter(u => store.canMessage(u.id) && `${u.name} ${u.handle}`.toLowerCase().includes(query.toLowerCase()));
         $('chat-people').innerHTML = matches.length ? matches.map(u => ui.person(u, 'chat-select')).join('') : '<div class="empty-state"><p>No hay coincidencias. Sigue a alguien desde su perfil o conversa con una persona que te siga.</p></div>';
@@ -78,7 +94,7 @@
             if (!(window.FansxeBoot ? await store.sendMessage(active, text, media) : store.sendMessage(active, text, media))) throw Error('No se pudo guardar el mensaje. Revisa el espacio disponible y la relación de seguimiento.');
             $('chat-text').value = ''; drafts.delete(active); picker.clear(); renderMessages(true);
         } catch (error) { await Promise.allSettled(media.map(a => FansxeMedia.remove(a.id))); options.notify(error.message); }
-        finally { busy = false; $('chat-form').querySelectorAll('input, textarea, button').forEach(el => { el.disabled = !store.canMessage(active); }); $('chat-text').focus({preventScroll:true}); }
+        finally { busy = false; $('chat-form').querySelectorAll('input, textarea, button').forEach(el => { el.disabled = !store.canMessage(active); }); $('chat-text').style.height='auto'; if(window.innerWidth>767)$('chat-text').focus({preventScroll:true}); fitViewport(); }
     }
     function init(config) {
         options = config;
@@ -90,7 +106,7 @@
     }
     window.FansxeChat = {
         init, open, people, get activeUser(){return $('chat-root')?.classList.contains('chat-selected')?active:null;},
-        back() { if (busy) return; $('chat-root').classList.remove('chat-selected'); },
+        back() { if (busy) return; $('chat-text')?.blur(); $('chat-root').classList.remove('chat-selected'); document.body.classList.remove('chat-nav-expanded'); fitViewport(); history.replaceState(null,'','mensajes.html'); },
         render() { if (!$('chat-root')) return; renderList(); if (!busy) renderMessages(); },
         newConversation() { $('people-search').value = ''; people(); options.openModal('newChatModal'); }
     };

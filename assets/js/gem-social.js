@@ -3,8 +3,10 @@
     const app=FansxeApp,store=FansxeStore,ui=FansxeComponents,$=id=>document.getElementById(id),e=ui.escape;
     const balance=()=>Number(store.billing.gems||0),fmt=value=>Number(value).toLocaleString('es-MX');
     let gift=null,sending=false,styleBusy=false;
+    const menuIcon=()=>'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 14 5-5 5 5"/></svg><span>Menú</span>';
     $('modals-slot').insertAdjacentHTML('beforeend',`<div id="gemTipModal" class="app-modal hidden"><div class="modal-backdrop" data-action="close-modal"></div><section id="gemTipModalContent" class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="gem-tip-title" tabindex="-1"><header class="modal-heading"><h2 id="gem-tip-title">Enviar propina</h2><button class="icon-button" data-action="close-modal" aria-label="Cerrar">×</button></header><div id="gem-tip-person"></div><p class="gem-tip-balance"></p><form id="gem-tip-form"><label class="form-label" for="gem-tip-amount">Gemas a enviar</label><input class="text-field" id="gem-tip-amount" type="number" min="1" max="22000" step="1" value="20" required><div class="tip-presets">${[20,50,100,500].map(n=>`<button type="button" class="button-secondary" data-tip-preset="${n}">${n} ◇</button>`).join('')}</div><p class="field-help">Confirma el importe antes de enviarlo. Es una propina; no activa una suscripción ni desbloquea contenido automáticamente.</p><div class="form-footer"><a class="text-link" href="gemas.html">Recargar gemas</a><button class="button-primary" id="gem-tip-confirm">Confirmar propina</button></div></form></section></div><div id="plusStyleModal" class="app-modal hidden"><div class="modal-backdrop" data-action="close-modal"></div><section id="plusStyleModalContent" class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="plus-style-title" tabindex="-1"><header class="modal-heading"><h2 id="plus-style-title">Tu perfil, con Plus</h2><button class="icon-button" data-action="close-modal" aria-label="Cerrar">×</button></header><p>Elige cómo quieres que se vea tu espacio.</p><form id="plus-style-form"><div id="plus-style-preview"><span>F</span><strong>Tu estilo, tu espacio</strong></div><label class="form-label" for="plus-accent">Color</label><select class="text-field" id="plus-accent"><option value="purple">Violeta Fansxe</option><option value="rose">Rosa</option><option value="ocean">Océano</option><option value="amber">Ámbar</option></select><label class="form-label" for="plus-border">Acabado</label><select class="text-field" id="plus-border"><option value="soft">Suave</option><option value="satin">Satinado</option><option value="glow">Brillo</option></select><div class="form-footer"><button class="button-primary" id="plus-style-save">Guardar estilo</button></div></form><div id="plus-style-upgrade"><p>Una insignia especial y colores propios para tu perfil. Un solo pago.</p><a class="button-primary" href="gemas.html#plus">Descubrir Fansxe Plus</a></div></section></div>`);
     function openTip(id,context='profile',post=null){
+        if(sending)return;
         if(!FansxeAuth.session())return window.FansxeRequireAccount?.();
         const user=store.user(id);if(!user||id==='demo'||!(user.privateAllowed||user.creatorStatus==='approved'))return app.notify('Este perfil aún no puede recibir propinas.');
         gift={id,context,post,requestKey:crypto.randomUUID()};
@@ -26,21 +28,25 @@
     $('plus-style-form').addEventListener('change',previewStyle);
     $('plus-style-form').addEventListener('submit',async ev=>{ev.preventDefault();if(styleBusy)return;styleBusy=true;$('plus-style-save').disabled=true;try{if(await store.write('profile-style',{accent:$('plus-accent').value,border:$('plus-border').value})){app.closeModal();app.notify('Estilo del perfil actualizado.');}}finally{styleBusy=false;$('plus-style-save').disabled=false;}});
     function chatTools(){
-        const form=$('chat-form');if(!form||form.dataset.compact)return;form.dataset.compact='true';
+        const form=$('chat-form');if(!form)return;
+        if(form.dataset.compact){const button=form.querySelector('[data-chat-tip]');if(button)button.title=store.user(FansxeChat.activeUser)?.privateAllowed?'Enviar propina':'El destinatario necesita verificar su identidad';return;}form.dataset.compact='true';
         const text=$('chat-text'),tools=form.querySelector('.chat-send-tools'),label=tools.querySelector('label'),preview=$('chat-preview');
         text.rows=1;label.innerHTML=ui.icon('photo');label.title='Adjuntar foto o video';label.setAttribute('aria-label','Adjuntar foto o video');
         const row=document.createElement('div');row.className='chat-compose-row';form.prepend(row);form.prepend(preview);
         row.append(label,tools.querySelector('input'),text);
-        const u=store.user(FansxeChat.activeUser);if(u&&(u.privateAllowed||u.creatorStatus==='approved')){const b=document.createElement('button');b.type='button';b.className='chat-tip-button';b.dataset.chatTip='true';b.innerHTML=ui.icon('gem');b.setAttribute('aria-label','Enviar propina con gemas');row.append(b);}
+        const b=document.createElement('button');b.type='button';b.className='chat-tip-button';b.dataset.chatTip='true';b.innerHTML=ui.icon('gem');b.title='Enviar propina con gemas';b.setAttribute('aria-label','Enviar propina con gemas');row.append(b);
         row.append(tools.querySelector('button'));tools.hidden=true;
         const help=form.querySelector('.field-help');help.classList.add('chat-upload-help');
         const wallet=document.createElement('a');wallet.href='gemas.html';wallet.className='chat-gem-balance';form.append(wallet);
         text.addEventListener('input',()=>{text.style.height='auto';text.style.height=Math.min(text.scrollHeight,112)+'px';});
-        if(!$('chat-nav-handle')){const nav=document.querySelector('.mobile-bottom-nav');const b=document.createElement('button');b.id='chat-nav-handle';b.type='button';b.setAttribute('aria-label','Mostrar navegación');b.setAttribute('aria-expanded','false');b.textContent='⌃ Menú';nav.before(b);}
+        if(!$('chat-nav-handle')){const nav=document.querySelector('.mobile-bottom-nav');const b=document.createElement('button');b.id='chat-nav-handle';b.type='button';b.setAttribute('aria-label','Mostrar navegación');b.setAttribute('aria-expanded','false');b.innerHTML=menuIcon();nav.before(b);}
         renderBalance();
     }
     function render(){
         renderBalance();chatTools();
+        const profile=document.querySelector('.profile-info');
+        const profileId=new URLSearchParams(location.search).get('user');
+        if(profile&&profileId&&profileId!=='demo'&&profileId!==FansxeBoot.selfId&&!profile.querySelector('.profile-tip-button'))profile.insertAdjacentHTML('beforeend',`<button type="button" class="button-secondary profile-tip-button" data-action="tip" data-creator="${e(profileId)}">${ui.icon('gem')}<span>Enviar propina</span></button>`);
         const own=document.querySelector('[data-action="edit-profile"]');if(own&&!document.querySelector('[data-plus-style]'))document.querySelector('.profile-actions')?.insertAdjacentHTML('beforeend','<button class="button-secondary profile-plus-button" data-plus-style>✦ Plus</button>');
         document.querySelectorAll('#sidebar-slot nav,#mobileDrawerContent nav').forEach(nav=>{if(!nav.querySelector('.plus-nav-link'))nav.insertAdjacentHTML('beforeend','<a class="commerce-nav plus-nav-link" href="gemas.html#plus">✦ <span>Fansxe Plus</span></a>');});
         const plus=document.querySelector('.plus-card');if(plus)plus.id='plus';
@@ -52,8 +58,8 @@
         if(b.hasAttribute('data-plus-style'))openStyle();
         if(b.hasAttribute('data-chat-tip'))openTip(FansxeChat.activeUser,'chat');
         if(b.dataset.tipPreset)$('gem-tip-amount').value=b.dataset.tipPreset;
-        if(b.id==='chat-nav-handle'){const expanded=document.body.classList.toggle('chat-nav-expanded');b.setAttribute('aria-expanded',String(expanded));b.setAttribute('aria-label',expanded?'Ocultar navegación':'Mostrar navegación');b.textContent=expanded?'⌄ Menú':'⌃ Menú';}
+        if(b.id==='chat-nav-handle'){const expanded=document.body.classList.toggle('chat-nav-expanded');b.setAttribute('aria-expanded',String(expanded));b.setAttribute('aria-label',expanded?'Ocultar navegación':'Mostrar navegación');}
     });
-    window.addEventListener('fansxe:chat-opened',()=>{document.body.classList.remove('chat-nav-expanded');chatTools();});
+    window.addEventListener('fansxe:chat-opened',()=>{document.body.classList.remove('chat-nav-expanded');$('chat-nav-handle')?.setAttribute('aria-expanded','false');chatTools();});
     window.addEventListener('fansxe:change',render);render();
 })();

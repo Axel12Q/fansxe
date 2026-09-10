@@ -13,7 +13,7 @@ function fixture() {
         community: { email: 'real@example.invalid', theme: 'dark', password: true, hiddenBadges: [], requests: [], stories: [], storyLikes: {}, storySeen: {} }, feed: { posts: [], hasMore: false } };
 }
 function load(t, file, boot = fixture()) {
-    let html = fs.readFileSync(path.join(root, file), 'utf8').replace('assets/js/auth.js','assets/js/server-auth.js');
+    let html = fs.readFileSync(path.join(root, file.split('?')[0]), 'utf8').replace('assets/js/auth.js','assets/js/server-auth.js');
     for (const name of ['data','store','community-store']) html = html.replace(`<script src="assets/js/${name}.js" defer></script>`, '');
     html = html.replace('<script src="assets/js/media.js" defer></script>', '<script src="assets/js/server-store.js" defer></script><script src="assets/js/media.js" defer></script>');
     html = html.replace('</body>', '<script src="assets/js/server-ui.js" defer></script><script src="assets/js/commerce.js" defer></script><script src="assets/js/highlights.js" defer></script><script src="assets/js/billing.js" defer></script><script src="assets/js/gem-social.js" defer></script></body>');
@@ -25,6 +25,26 @@ function load(t, file, boot = fixture()) {
     for(const s of w.document.querySelectorAll('script[src^="assets/"]')) w.eval(fs.readFileSync(path.join(root,s.getAttribute('src')),'utf8'));
     return {w,d:w.document,errors,calls};
 }
+test('profile and post tips open confirmation with the right recipient and context',async t=>{
+ const boot=billingFixture();boot.billing.gems=110;boot.data.creators.other={...boot.data.creators.demo,id:'other',name:'Other',privateAllowed:true};
+ boot.feed.posts=[{id:'post-tip',creatorId:'other',text:'Hello',media:[],visibility:'public',likes:0,comments:[],createdAt:Date.now()}];
+ const c=load(t,'perfil.html?user=other',boot);await tick();
+ c.d.querySelector('.profile-tip-button').click();assert.equal(c.w.FansxeApp.activeModal,'gemTipModal');assert.match(c.d.querySelector('#gem-tip-person').textContent,/Other/);
+ c.d.querySelector('#gem-tip-form').dispatchEvent(new c.w.Event('submit',{bubbles:true,cancelable:true}));await tick();
+ let data=JSON.parse(c.calls.find(x=>x.url.includes('action=gem-tip')).options.body);assert.equal(data.context,'profile');assert.equal(data.id,'other');
+ c.d.querySelector('.post-card .tip-button').click();c.d.querySelector('#gem-tip-form').dispatchEvent(new c.w.Event('submit',{bubbles:true,cancelable:true}));await tick();
+ data=JSON.parse(c.calls.filter(x=>x.url.includes('action=gem-tip')).at(-1).options.body);assert.equal(data.context,'post');assert.equal(data.post,'post-tip');assert.deepEqual(c.errors,[]);
+});
+test('mobile chat follows visible viewport and exits cleanly after keyboard movement',async t=>{
+ const boot=billingFixture();boot.data.creators.other={...boot.data.creators.demo,id:'other',name:'Other',privateAllowed:true};boot.state.following.other=true;boot.state.conversations.other={userId:'other',messages:[]};
+ const c=load(t,'mensajes.html',boot);await tick();c.w.innerWidth=390;c.w.innerHeight=844;
+ c.w.visualViewport={height:400,offsetTop:70};c.d.querySelector('[data-action="chat-select"]').click();await tick();
+ assert.equal(c.d.body.style.getPropertyValue('--chat-visible-height'),'400px');assert.equal(c.d.body.style.getPropertyValue('--chat-visible-top'),'70px');assert.ok(c.d.body.classList.contains('chat-viewport-active'));
+ const heading=c.d.querySelector('.chat-heading');assert.match(heading.textContent,/Other/);
+ c.d.querySelector('#chat-nav-handle').click();assert.equal(c.d.querySelector('#chat-nav-handle').getAttribute('aria-expanded'),'true');assert.ok(c.d.querySelector('#chat-nav-handle svg'));
+ c.w.visualViewport.height=844;c.w.visualViewport.offsetTop=0;c.w.dispatchEvent(new c.w.Event('resize'));assert.equal(c.d.body.style.getPropertyValue('--chat-visible-height'),'844px');assert.equal(c.d.querySelector('.chat-heading'),heading);
+ c.w.FansxeChat.back();assert.equal(c.d.body.classList.contains('chat-viewport-active'),false);assert.equal(c.d.body.classList.contains('chat-nav-expanded'),false);assert.deepEqual(c.errors,[]);
+});
 test('PHP-mode pages initialize with isolated account state and server settings', async t => {
     for(const file of ['inicio.html','perfil.html','mensajes.html','notificaciones.html','configuracion.html','admin.html','gemas.html','creador.html']) {
         const c=load(t,file);await tick();assert.deepEqual(c.errors,[],file);
